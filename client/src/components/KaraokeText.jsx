@@ -1,13 +1,24 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language }) {
-  const words = text.split(/\s+/);
+  const words = useMemo(() => text.split(/\s+/), [text]);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [selectedWord, setSelectedWord] = useState(null);
   const [wordExplanation, setWordExplanation] = useState(null);
   const [loadingExplanation, setLoadingExplanation] = useState(false);
   const recognitionRef = useRef(null);
   const transcriptRef = useRef('');
+  const onCompleteRef = useRef(onComplete);
+  const onTranscriptUpdateRef = useRef(onTranscriptUpdate);
+
+  // Keep refs in sync with latest props without triggering effect re-runs
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  useEffect(() => {
+    onTranscriptUpdateRef.current = onTranscriptUpdate;
+  }, [onTranscriptUpdate]);
 
   const normalizeWord = (word) => {
     return word.replace(/[^a-zA-Z']/g, '').toLowerCase();
@@ -80,13 +91,13 @@ function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language
       }
 
       transcriptRef.current = fullTranscript.trim();
-      onTranscriptUpdate?.(transcriptRef.current);
+      onTranscriptUpdateRef.current?.(transcriptRef.current);
 
       const matchIdx = findMatchIndex(transcriptRef.current);
       setCurrentWordIndex(matchIdx);
 
       if (matchIdx >= words.length - 1) {
-        onComplete?.(transcriptRef.current);
+        onCompleteRef.current?.(transcriptRef.current);
       }
     };
 
@@ -121,7 +132,7 @@ function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language
       }
       recognitionRef.current = null;
     };
-  }, [isReading, text, findMatchIndex, words.length, onComplete, onTranscriptUpdate]);
+  }, [isReading, findMatchIndex, words.length]);
 
   // Reset when text changes
   useEffect(() => {
