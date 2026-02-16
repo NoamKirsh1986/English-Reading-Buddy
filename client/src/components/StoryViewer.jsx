@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import KaraokeText from './KaraokeText';
-import VoiceTeacher from './VoiceTeacher';
+import BearTutor from './BearTutor';
 
 function StoryViewer({ story, language, onBack }) {
   const [currentPage, setCurrentPage] = useState(0);
   const [isReading, setIsReading] = useState(false);
   const [readingComplete, setReadingComplete] = useState(false);
   const [spokenText, setSpokenText] = useState('');
+  const [tutorSpeaking, setTutorSpeaking] = useState(false);
 
   const page = story.pages[currentPage];
   const isLastPage = currentPage === story.pages.length - 1;
@@ -28,12 +29,17 @@ function StoryViewer({ story, language, onBack }) {
     setIsReading(false);
   };
 
+  const handleTutorSpeaking = useCallback((speaking) => {
+    setTutorSpeaking(speaking);
+  }, []);
+
   const handleNextPage = () => {
     if (!isLastPage) {
       setCurrentPage((prev) => prev + 1);
       setIsReading(false);
       setReadingComplete(false);
       setSpokenText('');
+      setTutorSpeaking(false);
     }
   };
 
@@ -43,6 +49,7 @@ function StoryViewer({ story, language, onBack }) {
       setIsReading(false);
       setReadingComplete(false);
       setSpokenText('');
+      setTutorSpeaking(false);
     }
   };
 
@@ -74,6 +81,7 @@ function StoryViewer({ story, language, onBack }) {
           onComplete={handleReadingComplete}
           onTranscriptUpdate={setSpokenText}
           language={language}
+          tutorSpeaking={tutorSpeaking}
         />
       </div>
 
@@ -89,11 +97,12 @@ function StoryViewer({ story, language, onBack }) {
         )}
       </div>
 
-      <VoiceTeacher
-        originalText={page.text}
-        spokenText={spokenText}
-        isReadingComplete={readingComplete}
+      <BearTutor
+        pageText={page.text}
         language={language}
+        isReading={isReading}
+        isReadingComplete={readingComplete}
+        onTutorSpeaking={handleTutorSpeaking}
       />
 
       <div className="page-navigation">

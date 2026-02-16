@@ -407,71 +407,210 @@ body {
   transform: translateY(-2px);
 }
 
-/* ===== Voice Teacher ===== */
-.voice-teacher {
+/* ===== Bear Tutor ===== */
+.bear-tutor {
   background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
-  border: 2px solid #ffd700;
+  border: 2px solid #d4a574;
   border-radius: 20px;
-  padding: 20px 25px;
+  padding: 20px;
   animation: fadeIn 0.5s ease-in;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
 }
 
-.teacher-header {
+.bear-tutor.speaking {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+.bear-tutor.listening {
+  border-color: #43e97b;
+  box-shadow: 0 0 15px rgba(67, 233, 123, 0.2);
+}
+
+.bear-tutor.celebrating {
+  border-color: #f093fb;
+  box-shadow: 0 0 20px rgba(240, 147, 251, 0.3);
+}
+
+.bear-visual-container {
+  flex-shrink: 0;
+  width: 140px;
+}
+
+.bear-video-wrapper {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c0 100%);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.bear-video,
+.bear-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bear-placeholder-icon {
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #8B6914;
+  text-align: center;
+  padding: 10px;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c0 100%);
 }
 
-.teacher-icon {
+.bear-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.bear-loading-text {
+  font-size: 0.7rem;
+  color: #999;
+}
+
+.bear-status-badge {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #8B6914;
+  color: white;
+  padding: 2px 12px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.bear-status-badge.status-listening {
+  background: #43e97b;
+  color: #1a5c2e;
+  animation: listenPulse 2s ease-in-out infinite;
+}
+
+.bear-status-badge.status-speaking {
   background: #ffd700;
   color: #333;
-  padding: 4px 14px;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 0.9rem;
+  animation: speakPulse 1s ease-in-out infinite;
 }
 
-.speaking-indicator {
-  color: #e6a800;
-  font-weight: 600;
-  font-size: 0.9rem;
-  animation: fadeIn 0.3s ease-in;
+.bear-status-badge.status-celebrating {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
 }
 
-.teacher-loading {
+.bear-status-badge.status-error {
+  background: #f5576c;
+  color: white;
+}
+
+@keyframes listenPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes speakPulse {
+  0%, 100% { transform: translateX(-50%) scale(1); }
+  50% { transform: translateX(-50%) scale(1.05); }
+}
+
+/* Bear Chat Area */
+.bear-chat {
+  flex: 1;
+  min-width: 0;
+}
+
+.bear-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bear-name {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #8B6914;
+}
+
+.bear-connected-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #43e97b;
+  display: inline-block;
+  animation: listenPulse 2s ease-in-out infinite;
+}
+
+.bear-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.bear-hint {
   color: #999;
   font-style: italic;
-}
-
-.teacher-feedback {
-  font-size: 1.05rem;
-  line-height: 1.6;
-  color: #444;
-  white-space: pre-wrap;
-}
-
-.replay-btn {
-  margin-top: 12px;
-  background: #ffd700;
-  color: #333;
-  border: none;
-  padding: 8px 20px;
   font-size: 0.95rem;
-  font-weight: 600;
-  font-family: 'Nunito', sans-serif;
-  border-radius: 25px;
-  cursor: pointer;
-  transition: background 0.2s;
 }
 
-.replay-btn:hover:not(:disabled) {
-  background: #ffcc00;
+.bear-message {
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  animation: fadeIn 0.3s ease-in;
+  word-wrap: break-word;
 }
 
-.replay-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.bear-message-tutor {
+  background: white;
+  color: #444;
+  border: 1px solid #e8d5c0;
+  align-self: flex-start;
+  max-width: 95%;
+}
+
+.bear-message-user {
+  background: linear-gradient(135deg, #e8f4fd 0%, #d5e8f7 100%);
+  color: #333;
+  align-self: flex-end;
+  max-width: 85%;
+  font-size: 0.85rem;
+}
+
+.bear-message-error {
+  background: #fff0f0;
+  color: #c44;
+  border: 1px solid #fdd;
+  font-size: 0.85rem;
+}
+
+.message-label {
+  font-weight: 700;
+  font-size: 0.8rem;
+  opacity: 0.7;
 }
 
 /* ===== Page Navigation ===== */
@@ -552,5 +691,28 @@ body {
 
   .page-navigation {
     flex-direction: column;
+  }
+
+  .bear-tutor {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .bear-visual-container {
+    width: 100px;
+  }
+
+  .bear-video-wrapper {
+    width: 100px;
+    height: 100px;
+  }
+
+  .bear-messages {
+    max-height: 150px;
+  }
+
+  .bear-message-user {
+    align-self: center;
   }
 }

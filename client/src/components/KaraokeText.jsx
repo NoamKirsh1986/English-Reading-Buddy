@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language }) {
+function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language, tutorSpeaking }) {
   const words = useMemo(() => text.split(/\s+/), [text]);
   const [currentWordIndex, setCurrentWordIndex] = useState(-1);
   const [selectedWord, setSelectedWord] = useState(null);
@@ -133,6 +133,25 @@ function KaraokeText({ text, isReading, onComplete, onTranscriptUpdate, language
       recognitionRef.current = null;
     };
   }, [isReading, findMatchIndex, words.length]);
+
+  // Pause/resume recognition when tutor is speaking to avoid echo
+  useEffect(() => {
+    if (!recognitionRef.current || !isReading) return;
+
+    if (tutorSpeaking) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Already stopped
+      }
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        // Already started
+      }
+    }
+  }, [tutorSpeaking, isReading]);
 
   // Reset when text changes
   useEffect(() => {

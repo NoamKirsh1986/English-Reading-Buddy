@@ -41,3 +41,31 @@ export async function explainWord(word, sentence, nativeLanguage) {
 
   return response.json();
 }
+
+export async function createRealtimeSession(pageText, nativeLanguage) {
+  const response = await fetch(`${API_BASE}/realtime/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pageText, nativeLanguage }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create realtime session');
+  }
+
+  return response.json();
+}
+
+export async function generateTutorVideo() {
+  const response = await fetch(`${API_BASE}/tutor/generate-video`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to generate tutor video');
+  }
+
+  return response.json();
+}
