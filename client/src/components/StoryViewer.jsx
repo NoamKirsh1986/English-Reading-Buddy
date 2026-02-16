@@ -8,6 +8,7 @@ function StoryViewer({ story, language, onBack }) {
   const [readingComplete, setReadingComplete] = useState(false);
   const [spokenText, setSpokenText] = useState('');
   const [tutorSpeaking, setTutorSpeaking] = useState(false);
+  const [tutorTranscript, setTutorTranscript] = useState(null);
 
   const page = story.pages[currentPage];
   const isLastPage = currentPage === story.pages.length - 1;
@@ -17,6 +18,7 @@ function StoryViewer({ story, language, onBack }) {
     setIsReading(true);
     setReadingComplete(false);
     setSpokenText('');
+    setTutorTranscript(null);
   };
 
   const handleStopReading = () => {
@@ -33,6 +35,10 @@ function StoryViewer({ story, language, onBack }) {
     setTutorSpeaking(speaking);
   }, []);
 
+  const handleTutorTranscript = useCallback((transcript) => {
+    setTutorTranscript(transcript);
+  }, []);
+
   const handleNextPage = () => {
     if (!isLastPage) {
       setCurrentPage((prev) => prev + 1);
@@ -40,6 +46,7 @@ function StoryViewer({ story, language, onBack }) {
       setReadingComplete(false);
       setSpokenText('');
       setTutorSpeaking(false);
+      setTutorTranscript(null);
     }
   };
 
@@ -50,6 +57,7 @@ function StoryViewer({ story, language, onBack }) {
       setReadingComplete(false);
       setSpokenText('');
       setTutorSpeaking(false);
+      setTutorTranscript(null);
     }
   };
 
@@ -82,6 +90,7 @@ function StoryViewer({ story, language, onBack }) {
           onTranscriptUpdate={setSpokenText}
           language={language}
           tutorSpeaking={tutorSpeaking}
+          tutorReadingTranscript={tutorTranscript}
         />
       </div>
 
@@ -96,14 +105,6 @@ function StoryViewer({ story, language, onBack }) {
           </button>
         )}
       </div>
-
-      <BearTutor
-        pageText={page.text}
-        language={language}
-        isReading={isReading}
-        isReadingComplete={readingComplete}
-        onTutorSpeaking={handleTutorSpeaking}
-      />
 
       <div className="page-navigation">
         <button
@@ -121,6 +122,15 @@ function StoryViewer({ story, language, onBack }) {
           {isLastPage ? 'The End!' : 'Next Page'}
         </button>
       </div>
+
+      <BearTutor
+        pageText={page.text}
+        language={language}
+        isReading={isReading}
+        isReadingComplete={readingComplete}
+        onTutorSpeaking={handleTutorSpeaking}
+        onTutorTranscript={handleTutorTranscript}
+      />
     </div>
   );
 }

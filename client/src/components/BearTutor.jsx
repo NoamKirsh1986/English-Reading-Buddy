@@ -9,12 +9,10 @@ const TUTOR_STATES = {
   ERROR: 'error',
 };
 
-function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSpeaking }) {
+function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSpeaking, onTutorTranscript }) {
   const [tutorState, setTutorState] = useState(TUTOR_STATES.IDLE);
-  const [tutorMedia, setTutorMedia] = useState(null); // { type: 'video'|'image', url }
   const [messages, setMessages] = useState([]);
   const [connected, setConnected] = useState(false);
-  const [loadingVideo, setLoadingVideo] = useState(false);
 
   const pcRef = useRef(null);
   const dcRef = useRef(null);
@@ -22,34 +20,17 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
   const streamRef = useRef(null);
   const readingCompleteHandled = useRef(false);
   const pageTextRef = useRef(pageText);
+  const streamingTranscriptRef = useRef('');
+  const onTutorTranscriptRef = useRef(onTutorTranscript);
 
-  // Keep pageText ref current
+  // Keep refs current
   useEffect(() => {
     pageTextRef.current = pageText;
   }, [pageText]);
 
-  // Generate bear tutor video/image on first mount
   useEffect(() => {
-    generateTutorVisual();
-  }, []);
-
-  const generateTutorVisual = async () => {
-    setLoadingVideo(true);
-    try {
-      const res = await fetch('/api/tutor/generate-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      if (data.url) {
-        setTutorMedia({ type: data.type, url: data.url });
-      }
-    } catch (err) {
-      console.error('Failed to generate tutor visual:', err);
-    } finally {
-      setLoadingVideo(false);
-    }
-  };
+    onTutorTranscriptRef.current = onTutorTranscript;
+  }, [onTutorTranscript]);
 
   // Connect to Realtime API when reading starts
   useEffect(() => {
@@ -199,7 +180,12 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
   const handleRealtimeEvent = useCallback((event) => {
     switch (event.type) {
       case 'response.audio_transcript.delta':
-        // Bear is speaking — accumulate transcript for display
+        // Bear is speaking — accumulate transcript
+        streamingTranscriptRef.current += (event.delta || '');
+        // Send transcript to parent for karaoke highlighting during readback
+        if (readingCompleteHandled.current) {
+          onTutorTranscriptRef.current?.(streamingTranscriptRef.current);
+        }
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'tutor-streaming') {
@@ -222,6 +208,7 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
 
       case 'response.audio_transcript.done':
         // Finalize the streaming message
+        streamingTranscriptRef.current = '';
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last && last.type === 'tutor-streaming') {
@@ -242,6 +229,8 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
             : TUTOR_STATES.LISTENING
         );
         onTutorSpeaking?.(false);
+        // Clear karaoke highlighting when tutor stops
+        onTutorTranscriptRef.current?.(null);
         break;
 
       case 'input_audio_buffer.speech_started':
@@ -254,15 +243,11 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        // Show what the user said (for debugging/display)
-        if (event.transcript?.trim()) {
-          addMessage(event.transcript.trim(), 'user');
-        }
+        // User speech transcript (no longer displayed)
         break;
 
       case 'error':
         console.error('Realtime API error:', event.error);
-        addMessage('Oops, something went wrong. Try again!', 'error');
         break;
     }
   }, [tutorState, onTutorSpeaking]);
@@ -277,7 +262,7 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
           role: 'user',
           content: [{
             type: 'input_text',
-            text: 'READING_COMPLETE - The child has finished reading the page. Now: 1) Praise them warmly, 2) Read back the entire page text clearly and slowly, 3) Explain what it means in their native language.',
+            text: 'READING_COMPLETE - The child has finished reading the page. Now do STEP 1: Praise them briefly, then read back the ENTIRE page text clearly and slowly. After reading it, do STEP 2: Ask the child what they understood and WAIT for their response.',
           }],
         },
       }));
@@ -324,68 +309,39 @@ function BearTutor({ pageText, language, isReading, isReadingComplete, onTutorSp
     }
   };
 
+  const isTalking = tutorState === TUTOR_STATES.SPEAKING;
+
   return (
     <div className={`bear-tutor ${tutorState}`}>
-      <div className="bear-visual-container">
-        <div className="bear-video-wrapper">
-          {loadingVideo ? (
-            <div className="bear-loading">
-              <div className="bear-placeholder-icon">Buddy Bear</div>
-              <span className="bear-loading-text">Getting ready...</span>
+      <div className="bear-character-container">
+        <div className={`bear-character ${isTalking ? 'bear-talking' : ''}`}>
+          {/* Bear body */}
+          <div className="bear-body">
+            {/* Ears */}
+            <div className="bear-ear bear-ear-left"></div>
+            <div className="bear-ear bear-ear-right"></div>
+            {/* Head */}
+            <div className="bear-head">
+              {/* Eyes */}
+              <div className="bear-eye bear-eye-left">
+                <div className="bear-pupil"></div>
+              </div>
+              <div className="bear-eye bear-eye-right">
+                <div className="bear-pupil"></div>
+              </div>
+              {/* Nose */}
+              <div className="bear-nose"></div>
+              {/* Mouth */}
+              <div className={`bear-mouth ${isTalking ? 'bear-mouth-talking' : ''}`}></div>
             </div>
-          ) : tutorMedia?.type === 'video' ? (
-            <video
-              src={tutorMedia.url}
-              className="bear-video"
-              loop
-              autoPlay
-              muted
-              playsInline
-            />
-          ) : tutorMedia?.type === 'image' ? (
-            <img
-              src={tutorMedia.url}
-              alt="Buddy Bear tutor"
-              className="bear-image"
-            />
-          ) : (
-            <div className="bear-placeholder-icon">Buddy Bear</div>
-          )}
-          <div className={`bear-status-badge ${getStatusClass()}`}>
-            {getStatusText()}
+            {/* Teacher hat */}
+            <div className="bear-hat"></div>
           </div>
         </div>
-      </div>
-
-      <div className="bear-chat">
-        <div className="bear-chat-header">
-          <span className="bear-name">Buddy Bear</span>
-          {connected && <span className="bear-connected-dot" />}
+        <div className={`bear-status-badge ${getStatusClass()}`}>
+          {getStatusText()}
         </div>
-
-        <div className="bear-messages">
-          {messages.length === 0 && tutorState === TUTOR_STATES.IDLE && (
-            <p className="bear-hint">
-              Press "Start Reading" and Buddy Bear will listen and help you!
-            </p>
-          )}
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`bear-message ${
-                msg.type === 'user'
-                  ? 'bear-message-user'
-                  : msg.type === 'error'
-                  ? 'bear-message-error'
-                  : 'bear-message-tutor'
-              }`}
-            >
-              {msg.type === 'user' && <span className="message-label">You: </span>}
-              {msg.type !== 'user' && <span className="message-label">Bear: </span>}
-              {msg.text}
-            </div>
-          ))}
-        </div>
+        <span className="bear-name-label">Buddy Bear</span>
       </div>
     </div>
   );

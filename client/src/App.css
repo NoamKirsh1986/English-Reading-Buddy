@@ -409,93 +409,208 @@ body {
 
 /* ===== Bear Tutor ===== */
 .bear-tutor {
-  background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
-  border: 2px solid #d4a574;
-  border-radius: 20px;
-  padding: 20px;
   animation: fadeIn 0.5s ease-in;
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-}
-
-.bear-tutor.speaking {
-  border-color: #ffd700;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-}
-
-.bear-tutor.listening {
-  border-color: #43e97b;
-  box-shadow: 0 0 15px rgba(67, 233, 123, 0.2);
-}
-
-.bear-tutor.celebrating {
-  border-color: #f093fb;
-  box-shadow: 0 0 20px rgba(240, 147, 251, 0.3);
-}
-
-.bear-visual-container {
-  flex-shrink: 0;
-  width: 140px;
-}
-
-.bear-video-wrapper {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c0 100%);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
-
-.bear-video,
-.bear-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.bear-placeholder-icon {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: #8B6914;
-  text-align: center;
-  padding: 10px;
-  background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c0 100%);
+  padding: 10px 0;
 }
 
-.bear-loading {
-  width: 100%;
-  height: 100%;
+.bear-character-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
+  gap: 8px;
+  position: relative;
 }
 
-.bear-loading-text {
-  font-size: 0.7rem;
-  color: #999;
+.bear-name-label {
+  font-weight: 800;
+  font-size: 1rem;
+  color: white;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.bear-status-badge {
+/* ===== Animated Bear Character ===== */
+.bear-character {
+  width: 140px;
+  height: 150px;
+  position: relative;
+  animation: bearIdle 3s ease-in-out infinite;
+}
+
+.bear-character.bear-talking {
+  animation: bearTalk 0.6s ease-in-out infinite;
+}
+
+.bear-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Ears */
+.bear-ear {
   position: absolute;
-  bottom: -2px;
+  width: 36px;
+  height: 36px;
+  background: #8B6914;
+  border-radius: 50%;
+  top: 5px;
+  z-index: 0;
+}
+
+.bear-ear::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #d4a574;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.bear-ear-left {
+  left: 12px;
+}
+
+.bear-ear-right {
+  right: 12px;
+}
+
+/* Head */
+.bear-head {
+  position: absolute;
+  top: 20px;
   left: 50%;
   transform: translateX(-50%);
+  width: 110px;
+  height: 100px;
+  background: linear-gradient(180deg, #c49a6c 0%, #a67c52 100%);
+  border-radius: 50% 50% 45% 45%;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Eyes */
+.bear-eye {
+  position: absolute;
+  width: 22px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  top: 30px;
+}
+
+.bear-eye-left {
+  left: 22px;
+}
+
+.bear-eye-right {
+  right: 22px;
+}
+
+.bear-pupil {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #2c1810;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: bearBlink 4s ease-in-out infinite;
+}
+
+.bear-pupil::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  right: 1px;
+}
+
+/* Nose */
+.bear-nose {
+  position: absolute;
+  width: 18px;
+  height: 12px;
+  background: #2c1810;
+  border-radius: 50%;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Mouth */
+.bear-mouth {
+  position: absolute;
+  width: 20px;
+  height: 10px;
+  border-bottom: 3px solid #2c1810;
+  border-radius: 0 0 50% 50%;
+  top: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.15s ease;
+}
+
+.bear-mouth-talking {
+  width: 22px;
+  height: 16px;
+  background: #7a3030;
+  border: 2px solid #2c1810;
+  border-radius: 50%;
+  animation: mouthMove 0.3s ease-in-out infinite alternate;
+}
+
+/* Teacher hat */
+.bear-hat {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-8deg);
+  width: 50px;
+  height: 20px;
+  background: #cc3333;
+  border-radius: 4px 4px 0 0;
+  z-index: 2;
+}
+
+.bear-hat::before {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: -8px;
+  width: 66px;
+  height: 8px;
+  background: #cc3333;
+  border-radius: 3px;
+}
+
+.bear-hat::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  background: #ffcc00;
+  border-radius: 50%;
+}
+
+/* Bear status badge */
+.bear-status-badge {
   background: #8B6914;
   color: white;
-  padding: 2px 12px;
-  border-radius: 10px;
-  font-size: 0.7rem;
+  padding: 3px 14px;
+  border-radius: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -522,95 +637,38 @@ body {
   color: white;
 }
 
+/* Bear animations */
+@keyframes bearIdle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3px) rotate(-1deg); }
+  75% { transform: translateY(-1px) rotate(1deg); }
+}
+
+@keyframes bearTalk {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  25% { transform: translateY(-4px) rotate(1deg); }
+  50% { transform: translateY(-2px) rotate(-2deg); }
+  75% { transform: translateY(-5px) rotate(1.5deg); }
+}
+
+@keyframes mouthMove {
+  0% { height: 10px; width: 18px; }
+  100% { height: 18px; width: 24px; }
+}
+
+@keyframes bearBlink {
+  0%, 45%, 55%, 100% { transform: translate(-50%, -50%) scaleY(1); }
+  50% { transform: translate(-50%, -50%) scaleY(0.1); }
+}
+
 @keyframes listenPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
 
 @keyframes speakPulse {
-  0%, 100% { transform: translateX(-50%) scale(1); }
-  50% { transform: translateX(-50%) scale(1.05); }
-}
-
-/* Bear Chat Area */
-.bear-chat {
-  flex: 1;
-  min-width: 0;
-}
-
-.bear-chat-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.bear-name {
-  font-weight: 800;
-  font-size: 1.1rem;
-  color: #8B6914;
-}
-
-.bear-connected-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #43e97b;
-  display: inline-block;
-  animation: listenPulse 2s ease-in-out infinite;
-}
-
-.bear-messages {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-  padding-right: 5px;
-}
-
-.bear-hint {
-  color: #999;
-  font-style: italic;
-  font-size: 0.95rem;
-}
-
-.bear-message {
-  padding: 8px 14px;
-  border-radius: 14px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  animation: fadeIn 0.3s ease-in;
-  word-wrap: break-word;
-}
-
-.bear-message-tutor {
-  background: white;
-  color: #444;
-  border: 1px solid #e8d5c0;
-  align-self: flex-start;
-  max-width: 95%;
-}
-
-.bear-message-user {
-  background: linear-gradient(135deg, #e8f4fd 0%, #d5e8f7 100%);
-  color: #333;
-  align-self: flex-end;
-  max-width: 85%;
-  font-size: 0.85rem;
-}
-
-.bear-message-error {
-  background: #fff0f0;
-  color: #c44;
-  border: 1px solid #fdd;
-  font-size: 0.85rem;
-}
-
-.message-label {
-  font-weight: 700;
-  font-size: 0.8rem;
-  opacity: 0.7;
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* ===== Page Navigation ===== */
@@ -618,7 +676,6 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 15px;
-  padding-bottom: 30px;
 }
 
 .nav-btn {
@@ -693,26 +750,23 @@ body {
     flex-direction: column;
   }
 
-  .bear-tutor {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
+  .bear-character {
+    width: 110px;
+    height: 120px;
   }
 
-  .bear-visual-container {
-    width: 100px;
+  .bear-head {
+    width: 90px;
+    height: 82px;
   }
 
-  .bear-video-wrapper {
-    width: 100px;
-    height: 100px;
+  .bear-ear {
+    width: 28px;
+    height: 28px;
   }
 
-  .bear-messages {
-    max-height: 150px;
-  }
-
-  .bear-message-user {
-    align-self: center;
+  .bear-ear::after {
+    width: 16px;
+    height: 16px;
   }
 }
