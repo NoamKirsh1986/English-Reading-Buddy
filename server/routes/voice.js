@@ -75,6 +75,86 @@ Keep explanations very short and child-friendly (3-4 lines max).`,
   }
 });
 
+// Analyze reading accuracy and generate tutor response
+router.post('/analyze-reading', async (req, res) => {
+  try {
+    const { originalText, spokenText, nativeLanguage } = req.body;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a friendly English reading tutor for children who speak ${nativeLanguage}.
+Compare the child's spoken text against the original text word by word.
+Return a JSON object with:
+1. "wordResults": an array with one entry per word in the original text. Each entry has:
+   - "word": the original word (keep punctuation)
+   - "status": "correct" if the child read it right (allow minor pronunciation differences), or "incorrect" if they missed or mispronounced it
+2. "feedback": A short, encouraging message (2-3 sentences) in a mix of simple English and ${nativeLanguage}. Read the sentence for the child and explain what it means in ${nativeLanguage}.
+3. "practiceWord": One word the child struggled with most (pick from incorrect words). If all correct, set to null.
+4. "practicePhrase": A short, simple phrase (3-6 words) using the practiceWord in a new context. Example: if the word is "night", the phrase could be "I sleep at night". If all words correct, set to null.
+5. "practiceExplanation": Brief explanation of the practice phrase in ${nativeLanguage}. If all correct, set to null.
+
+Return ONLY valid JSON, no markdown fences.`,
+        },
+        {
+          role: 'user',
+          content: `Original text: "${originalText}"\nChild's reading: "${spokenText}"`,
+        },
+      ],
+      max_tokens: 600,
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0].message.content.trim();
+    // Strip markdown fences if present
+    const jsonStr = content.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
+    const result = JSON.parse(jsonStr);
+    res.json(result);
+  } catch (error) {
+    console.error('Analyze reading error:', error);
+    res.status(500).json({ error: 'Failed to analyze reading' });
+  }
+});
+
+// Evaluate child's practice attempt
+router.post('/evaluate-practice', async (req, res) => {
+  try {
+    const { practicePhrase, spokenText, nativeLanguage } = req.body;
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a friendly English tutor for children who speak ${nativeLanguage}.
+The child was asked to say a practice phrase. Evaluate how they did.
+Return a JSON object with:
+1. "success": true if they said it reasonably well, false if they need to try again
+2. "message": A short encouraging response (1-2 sentences) in simple English and ${nativeLanguage}. If they did well, praise them and tell them to go to the next page. If not, gently encourage them to try again.
+
+Return ONLY valid JSON, no markdown fences.`,
+        },
+        {
+          role: 'user',
+          content: `Practice phrase: "${practicePhrase}"\nChild said: "${spokenText}"`,
+        },
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+
+    const content = response.choices[0].message.content.trim();
+    const jsonStr = content.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
+    const result = JSON.parse(jsonStr);
+    res.json(result);
+  } catch (error) {
+    console.error('Evaluate practice error:', error);
+    res.status(500).json({ error: 'Failed to evaluate practice' });
+  }
+});
+
 // Generate TTS audio
 router.post('/tts', async (req, res) => {
   try {

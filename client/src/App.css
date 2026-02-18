@@ -13,7 +13,7 @@ body {
 }
 
 .app {
-  max-width: 900px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
   min-height: 100vh;
@@ -22,20 +22,20 @@ body {
 /* ===== Header ===== */
 .app-header {
   text-align: center;
-  padding: 20px 0;
+  padding: 15px 0;
   color: white;
 }
 
 .app-header h1 {
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   font-weight: 800;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .subtitle {
-  font-size: 1.1rem;
+  font-size: 1rem;
   opacity: 0.9;
-  margin-top: 5px;
+  margin-top: 3px;
 }
 
 /* ===== Home Screen ===== */
@@ -190,7 +190,7 @@ body {
 .story-viewer {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 15px;
 }
 
 .story-controls-top {
@@ -225,6 +225,33 @@ body {
   border-radius: 25px;
 }
 
+/* ===== Split Layout ===== */
+.split-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.book-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.tutor-panel {
+  width: 360px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 120px);
+  overflow: hidden;
+}
+
 /* ===== Story Content ===== */
 .story-content {
   background: white;
@@ -235,7 +262,7 @@ body {
 
 .story-image-container {
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #f0f0f0;
 }
@@ -249,25 +276,20 @@ body {
 
 /* ===== Karaoke Text ===== */
 .karaoke-container {
-  padding: 30px;
+  padding: 24px 30px;
 }
 
 .karaoke-text {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   line-height: 2.2;
-  text-align: left;
+  text-align: center;
 }
 
 .karaoke-word {
   padding: 2px 4px;
   border-radius: 6px;
-  cursor: pointer;
   transition: all 0.2s ease;
   display: inline;
-}
-
-.karaoke-word:hover {
-  background: #e8f4fd;
 }
 
 .word-read {
@@ -283,392 +305,31 @@ body {
   animation: pulse 0.5s ease-in-out;
 }
 
-.word-selected {
-  background: #e8f4fd;
-  border-bottom: 2px solid #667eea;
+.word-correct {
+  color: #2ecc71;
+  font-weight: 700;
+}
+
+.word-incorrect {
+  color: #e67e22;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: #e67e22;
+  text-underline-offset: 4px;
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 
 .reading-hint {
   text-align: center;
   color: #999;
   font-style: italic;
-  margin-top: 15px;
+  margin-top: 10px;
   animation: fadeIn 0.5s ease-in;
-}
-
-/* ===== Word Explanation ===== */
-.word-explanation {
-  margin-top: 20px;
-  padding: 20px;
-  background: linear-gradient(135deg, #e8f4fd 0%, #f0e6ff 100%);
-  border-radius: 15px;
-  position: relative;
-  animation: fadeIn 0.3s ease-in;
-}
-
-.word-explanation h4 {
-  font-size: 1.2rem;
-  color: #667eea;
-  margin-bottom: 8px;
-}
-
-.word-explanation p {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: #444;
-  white-space: pre-wrap;
-}
-
-.close-explanation {
-  position: absolute;
-  top: 10px;
-  right: 15px;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  color: #999;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.close-explanation:hover {
-  color: #666;
-}
-
-.loading-text {
-  color: #999;
-  font-style: italic;
-}
-
-/* ===== Reading Controls ===== */
-.reading-controls {
-  display: flex;
-  justify-content: center;
-  gap: 15px;
-}
-
-.read-btn {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-  color: white;
-  border: none;
-  padding: 14px 40px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  font-family: 'Nunito', sans-serif;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4);
-}
-
-.read-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(67, 233, 123, 0.5);
-}
-
-.stop-btn {
-  background: linear-gradient(135deg, #f5576c 0%, #ff6b6b 100%);
-  color: white;
-  border: none;
-  padding: 14px 40px;
-  font-size: 1.2rem;
-  font-weight: 700;
-  font-family: 'Nunito', sans-serif;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
-  animation: recording 1.5s ease-in-out infinite;
-}
-
-@keyframes recording {
-  0%,
-  100% {
-    box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
-  }
-  50% {
-    box-shadow: 0 4px 25px rgba(245, 87, 108, 0.7);
-  }
-}
-
-.stop-btn:hover {
-  transform: translateY(-2px);
-}
-
-/* ===== Bear Tutor ===== */
-.bear-tutor {
-  animation: fadeIn 0.5s ease-in;
-  display: flex;
-  justify-content: center;
-  padding: 10px 0;
-}
-
-.bear-character-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-}
-
-.bear-name-label {
-  font-weight: 800;
-  font-size: 1rem;
-  color: white;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-/* ===== Animated Bear Character ===== */
-.bear-character {
-  width: 140px;
-  height: 150px;
-  position: relative;
-  animation: bearIdle 3s ease-in-out infinite;
-}
-
-.bear-character.bear-talking {
-  animation: bearTalk 0.6s ease-in-out infinite;
-}
-
-.bear-body {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-/* Ears */
-.bear-ear {
-  position: absolute;
-  width: 36px;
-  height: 36px;
-  background: #8B6914;
-  border-radius: 50%;
-  top: 5px;
-  z-index: 0;
-}
-
-.bear-ear::after {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background: #d4a574;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.bear-ear-left {
-  left: 12px;
-}
-
-.bear-ear-right {
-  right: 12px;
-}
-
-/* Head */
-.bear-head {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 110px;
-  height: 100px;
-  background: linear-gradient(180deg, #c49a6c 0%, #a67c52 100%);
-  border-radius: 50% 50% 45% 45%;
-  z-index: 1;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-/* Eyes */
-.bear-eye {
-  position: absolute;
-  width: 22px;
-  height: 24px;
-  background: white;
-  border-radius: 50%;
-  top: 30px;
-}
-
-.bear-eye-left {
-  left: 22px;
-}
-
-.bear-eye-right {
-  right: 22px;
-}
-
-.bear-pupil {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: #2c1810;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: bearBlink 4s ease-in-out infinite;
-}
-
-.bear-pupil::after {
-  content: '';
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: white;
-  border-radius: 50%;
-  top: 2px;
-  right: 1px;
-}
-
-/* Nose */
-.bear-nose {
-  position: absolute;
-  width: 18px;
-  height: 12px;
-  background: #2c1810;
-  border-radius: 50%;
-  top: 55px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* Mouth */
-.bear-mouth {
-  position: absolute;
-  width: 20px;
-  height: 10px;
-  border-bottom: 3px solid #2c1810;
-  border-radius: 0 0 50% 50%;
-  top: 68px;
-  left: 50%;
-  transform: translateX(-50%);
-  transition: all 0.15s ease;
-}
-
-.bear-mouth-talking {
-  width: 22px;
-  height: 16px;
-  background: #7a3030;
-  border: 2px solid #2c1810;
-  border-radius: 50%;
-  animation: mouthMove 0.3s ease-in-out infinite alternate;
-}
-
-/* Teacher hat */
-.bear-hat {
-  position: absolute;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%) rotate(-8deg);
-  width: 50px;
-  height: 20px;
-  background: #cc3333;
-  border-radius: 4px 4px 0 0;
-  z-index: 2;
-}
-
-.bear-hat::before {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: -8px;
-  width: 66px;
-  height: 8px;
-  background: #cc3333;
-  border-radius: 3px;
-}
-
-.bear-hat::after {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 10px;
-  height: 10px;
-  background: #ffcc00;
-  border-radius: 50%;
-}
-
-/* Bear status badge */
-.bear-status-badge {
-  background: #8B6914;
-  color: white;
-  padding: 3px 14px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.bear-status-badge.status-listening {
-  background: #43e97b;
-  color: #1a5c2e;
-  animation: listenPulse 2s ease-in-out infinite;
-}
-
-.bear-status-badge.status-speaking {
-  background: #ffd700;
-  color: #333;
-  animation: speakPulse 1s ease-in-out infinite;
-}
-
-.bear-status-badge.status-celebrating {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-}
-
-.bear-status-badge.status-error {
-  background: #f5576c;
-  color: white;
-}
-
-/* Bear animations */
-@keyframes bearIdle {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(-3px) rotate(-1deg); }
-  75% { transform: translateY(-1px) rotate(1deg); }
-}
-
-@keyframes bearTalk {
-  0%, 100% { transform: translateY(0) rotate(-1deg); }
-  25% { transform: translateY(-4px) rotate(1deg); }
-  50% { transform: translateY(-2px) rotate(-2deg); }
-  75% { transform: translateY(-5px) rotate(1.5deg); }
-}
-
-@keyframes mouthMove {
-  0% { height: 10px; width: 18px; }
-  100% { height: 18px; width: 24px; }
-}
-
-@keyframes bearBlink {
-  0%, 45%, 55%, 100% { transform: translate(-50%, -50%) scaleY(1); }
-  50% { transform: translate(-50%, -50%) scaleY(0.1); }
-}
-
-@keyframes listenPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes speakPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
 }
 
 /* ===== Page Navigation ===== */
@@ -680,7 +341,7 @@ body {
 
 .nav-btn {
   flex: 1;
-  padding: 14px 20px;
+  padding: 12px 20px;
   font-size: 1.05rem;
   font-weight: 700;
   font-family: 'Nunito', sans-serif;
@@ -718,8 +379,381 @@ body {
   transform: none !important;
 }
 
+/* ===== Panda Tutor Character ===== */
+.panda-character-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 20px 10px;
+  background: linear-gradient(135deg, #e8f5e9 0%, #f3e5f5 100%);
+  border-radius: 20px 20px 0 0;
+}
+
+.panda-name-label {
+  font-weight: 800;
+  font-size: 1rem;
+  color: #555;
+  margin-top: 6px;
+}
+
+.panda-character {
+  width: 120px;
+  height: 130px;
+  position: relative;
+  animation: pandaIdle 3s ease-in-out infinite;
+}
+
+.panda-character.panda-talking {
+  animation: pandaTalk 0.6s ease-in-out infinite;
+}
+
+.panda-character.panda-listening {
+  animation: pandaListen 2s ease-in-out infinite;
+}
+
+.panda-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Panda Ears */
+.panda-ear {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  top: 2px;
+  z-index: 0;
+}
+
+.panda-ear-left {
+  left: 8px;
+}
+
+.panda-ear-right {
+  right: 8px;
+}
+
+/* Panda Head */
+.panda-head {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 90px;
+  background: white;
+  border-radius: 50%;
+  z-index: 1;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 2px solid #eee;
+}
+
+/* Eye Patches */
+.panda-eye-patch {
+  position: absolute;
+  width: 28px;
+  height: 24px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  top: 24px;
+  transform: rotate(-10deg);
+}
+
+.panda-eye-patch-left {
+  left: 14px;
+}
+
+.panda-eye-patch-right {
+  right: 14px;
+  transform: rotate(10deg);
+}
+
+/* Eyes */
+.panda-eye {
+  position: absolute;
+  width: 14px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.panda-pupil {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: pandaBlink 4s ease-in-out infinite;
+}
+
+.panda-pupil::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: white;
+  border-radius: 50%;
+  top: 1px;
+  right: 0px;
+}
+
+/* Nose */
+.panda-nose {
+  position: absolute;
+  width: 14px;
+  height: 10px;
+  background: #1a1a1a;
+  border-radius: 50%;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Mouth */
+.panda-mouth {
+  position: absolute;
+  width: 16px;
+  height: 8px;
+  border-bottom: 2.5px solid #1a1a1a;
+  border-radius: 0 0 50% 50%;
+  top: 62px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.15s ease;
+}
+
+.panda-mouth-talking {
+  width: 18px;
+  height: 14px;
+  background: #ff6b6b;
+  border: 2px solid #1a1a1a;
+  border-radius: 50%;
+  animation: pandaMouthMove 0.3s ease-in-out infinite alternate;
+}
+
+/* Sunglasses on forehead */
+.panda-sunglasses {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  width: 70px;
+  height: 20px;
+}
+
+.panda-lens {
+  position: absolute;
+  width: 24px;
+  height: 16px;
+  background: linear-gradient(135deg, #333 0%, #555 100%);
+  border-radius: 4px;
+  border: 2px solid #222;
+  top: 0;
+}
+
+.panda-lens-left {
+  left: 6px;
+}
+
+.panda-lens-right {
+  right: 6px;
+}
+
+.panda-bridge {
+  position: absolute;
+  width: 12px;
+  height: 3px;
+  background: #222;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 2px;
+}
+
+/* Panda Animations */
+@keyframes pandaIdle {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(-1deg); }
+  75% { transform: translateY(-1px) rotate(1deg); }
+}
+
+@keyframes pandaTalk {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  25% { transform: translateY(-3px) rotate(1deg); }
+  50% { transform: translateY(-1px) rotate(-1.5deg); }
+  75% { transform: translateY(-4px) rotate(1deg); }
+}
+
+@keyframes pandaListen {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-2px) rotate(2deg); }
+}
+
+@keyframes pandaMouthMove {
+  0% { height: 10px; width: 16px; }
+  100% { height: 16px; width: 20px; }
+}
+
+@keyframes pandaBlink {
+  0%, 45%, 55%, 100% { transform: translate(-50%, -50%) scaleY(1); }
+  50% { transform: translate(-50%, -50%) scaleY(0.1); }
+}
+
+/* ===== Tutor Messages ===== */
+.tutor-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 150px;
+  max-height: 300px;
+}
+
+.tutor-hint {
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+  font-size: 0.95rem;
+}
+
+.tutor-message {
+  padding: 10px 14px;
+  border-radius: 14px;
+  animation: fadeIn 0.3s ease-in;
+  max-width: 90%;
+}
+
+.panda-message {
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.child-message {
+  background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.message-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.panda-message .message-label {
+  color: #2e7d32;
+}
+
+.child-message .message-label {
+  color: #1565c0;
+}
+
+.tutor-message p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #333;
+  margin: 0;
+}
+
+/* ===== Microphone Button ===== */
+.mic-area {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid #eee;
+}
+
+.mic-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4);
+}
+
+.mic-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(67, 233, 123, 0.5);
+}
+
+.mic-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mic-btn.mic-active {
+  background: linear-gradient(135deg, #f5576c 0%, #ff6b6b 100%);
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+  animation: micPulse 1.5s ease-in-out infinite;
+}
+
+.mic-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.mic-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recording-indicator {
+  font-size: 0.8rem;
+  color: #f5576c;
+  font-weight: 700;
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4); }
+  50% { box-shadow: 0 4px 30px rgba(245, 87, 108, 0.7); }
+}
+
 /* ===== Responsive ===== */
-@media (max-width: 600px) {
+@media (max-width: 900px) {
+  .split-layout {
+    flex-direction: column;
+  }
+
+  .tutor-panel {
+    width: 100%;
+    max-height: none;
+  }
+
+  .tutor-messages {
+    max-height: 200px;
+  }
+
   .app {
     padding: 15px;
   }
@@ -728,12 +762,8 @@ body {
     font-size: 1.8rem;
   }
 
-  .setup-card {
-    padding: 25px;
-  }
-
   .karaoke-text {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     line-height: 2;
   }
 
@@ -741,32 +771,61 @@ body {
     padding: 20px;
   }
 
-  .story-controls-top {
-    flex-direction: row;
-    gap: 10px;
+  .panda-character {
+    width: 90px;
+    height: 100px;
+  }
+
+  .panda-head {
+    width: 80px;
+    height: 72px;
+  }
+
+  .panda-ear {
+    width: 26px;
+    height: 26px;
+  }
+
+  .panda-eye-patch {
+    width: 22px;
+    height: 19px;
+    top: 18px;
+  }
+
+  .panda-eye-patch-left {
+    left: 10px;
+  }
+
+  .panda-eye-patch-right {
+    right: 10px;
+  }
+
+  .panda-nose {
+    top: 42px;
+  }
+
+  .panda-mouth {
+    top: 52px;
+  }
+
+  .panda-sunglasses {
+    width: 56px;
+    height: 16px;
+    top: 4px;
+  }
+
+  .panda-lens {
+    width: 18px;
+    height: 12px;
+  }
+
+  .panda-bridge {
+    width: 10px;
+    height: 2px;
+    top: 6px;
   }
 
   .page-navigation {
-    flex-direction: column;
-  }
-
-  .bear-character {
-    width: 110px;
-    height: 120px;
-  }
-
-  .bear-head {
-    width: 90px;
-    height: 82px;
-  }
-
-  .bear-ear {
-    width: 28px;
-    height: 28px;
-  }
-
-  .bear-ear::after {
-    width: 16px;
-    height: 16px;
+    flex-direction: row;
   }
 }

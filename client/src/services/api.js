@@ -14,58 +14,44 @@ export async function generateStory() {
   return response.json();
 }
 
-export async function getTeacherFeedback(originalText, spokenText, nativeLanguage) {
-  const response = await fetch(`${API_BASE}/voice/feedback`, {
+export async function analyzeReading(originalText, spokenText, nativeLanguage) {
+  const response = await fetch(`${API_BASE}/voice/analyze-reading`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ originalText, spokenText, nativeLanguage }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to get feedback');
+    throw new Error('Failed to analyze reading');
   }
 
   return response.json();
 }
 
-export async function explainWord(word, sentence, nativeLanguage) {
-  const response = await fetch(`${API_BASE}/voice/explain`, {
+export async function evaluatePractice(practicePhrase, spokenText, nativeLanguage) {
+  const response = await fetch(`${API_BASE}/voice/evaluate-practice`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ word, sentence, nativeLanguage }),
+    body: JSON.stringify({ practicePhrase, spokenText, nativeLanguage }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to explain word');
+    throw new Error('Failed to evaluate practice');
   }
 
   return response.json();
 }
 
-export async function createRealtimeSession(pageText, nativeLanguage) {
-  const response = await fetch(`${API_BASE}/realtime/session`, {
+export async function textToSpeech(text) {
+  const response = await fetch(`${API_BASE}/voice/tts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pageText, nativeLanguage }),
+    body: JSON.stringify({ text }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create realtime session');
+    throw new Error('Failed to generate speech');
   }
 
-  return response.json();
-}
-
-export async function generateTutorVideo() {
-  const response = await fetch(`${API_BASE}/tutor/generate-video`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to generate tutor video');
-  }
-
-  return response.json();
+  return response.blob();
 }

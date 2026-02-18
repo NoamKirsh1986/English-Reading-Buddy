@@ -47,26 +47,7 @@ Return ONLY the story text — no title, no labels, no extra formatting.`,
 
 function splitIntoPages(story) {
   const sentences = story.match(/[^.!?]+[.!?]+/g) || [story];
-  const pages = [];
-  let currentPage = [];
-
-  for (const sentence of sentences) {
-    currentPage.push(sentence.trim());
-    if (currentPage.length >= 2) {
-      pages.push(currentPage.join(' '));
-      currentPage = [];
-    }
-  }
-
-  if (currentPage.length > 0) {
-    if (pages.length > 0 && currentPage.length === 1) {
-      pages[pages.length - 1] += ' ' + currentPage[0];
-    } else {
-      pages.push(currentPage.join(' '));
-    }
-  }
-
-  return pages;
+  return sentences.map((s) => s.trim()).filter((s) => s.length > 0);
 }
 
 module.exports = { generateStory, splitIntoPages, openai };
