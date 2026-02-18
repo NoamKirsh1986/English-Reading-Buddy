@@ -25,6 +25,8 @@ function StoryViewer({ story, language, onBack }) {
 
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const messagesEndRef = useRef(null);
 
   const page = story.pages[currentPage];
@@ -45,13 +47,13 @@ function StoryViewer({ story, language, onBack }) {
   useEffect(() => {
     return () => {
       stopAudio();
-      stopRecognition();
+      stopRecording();
     };
   }, []);
 
   const resetPageState = () => {
     stopAudio();
-    stopRecognition();
+    stopRecording();
     setFlowState(FLOW_STATES.IDLE);
     setSpokenText('');
     setWordResults(null);
@@ -69,7 +71,7 @@ function StoryViewer({ story, language, onBack }) {
     setTutorMessages((prev) => [...prev, { type: 'child', text }]);
   };
 
-  // ===== Audio helpers =====
+  // ===== Audio playback helpers =====
   const stopAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -114,16 +116,37 @@ function StoryViewer({ story, language, onBack }) {
     });
   };
 
-  // ===== Speech Recognition helpers =====
-  const startRecognition = () => {
-    return new Promise((resolve) => {
-      const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        resolve('');
-        return;
-      }
+  // ===== Recording helpers (MediaRecorder for audio + Web Speech API for karaoke) =====
+  const startRecording = async () => {
+    audioChunksRef.current = [];
 
+    // Start MediaRecorder for actual audio capture
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm',
+      });
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorderRef.current = mediaRecorder;
+    } catch (err) {
+      console.error('Failed to start MediaRecorder:', err);
+      alert('Please allow microphone access to use the reading feature.');
+      return;
+    }
+
+    // Start Web Speech API for live karaoke text highlighting
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -146,13 +169,9 @@ function StoryViewer({ story, language, onBack }) {
 
       recognition.onerror = (event) => {
         console.error('Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          alert('Please allow microphone access to use the reading feature.');
-        }
       };
 
       recognition.onend = () => {
-        // Auto-restart if still active
         if (recognitionRef.current === recognition) {
           try {
             recognition.start();
@@ -162,19 +181,16 @@ function StoryViewer({ story, language, onBack }) {
         }
       };
 
-      recognition._resolve = resolve;
-      recognition._finalTranscript = () => finalTranscript;
-
       try {
         recognition.start();
       } catch (e) {
         console.error('Failed to start recognition:', e);
-        resolve('');
       }
-    });
+    }
   };
 
-  const stopRecognition = () => {
+  const stopRecording = () => {
+    // Stop Web Speech API
     if (recognitionRef.current) {
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
@@ -183,11 +199,23 @@ function StoryViewer({ story, language, onBack }) {
       } catch (e) {
         // already stopped
       }
-      if (recognition._resolve) {
-        recognition._resolve(recognition._finalTranscript?.() || '');
-        recognition._resolve = null;
-      }
     }
+
+    // Stop MediaRecorder and its stream
+    if (mediaRecorderRef.current) {
+      const recorder = mediaRecorderRef.current;
+      mediaRecorderRef.current = null;
+      if (recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+      // Stop all tracks on the mic stream
+      recorder.stream?.getTracks().forEach((track) => track.stop());
+    }
+  };
+
+  const getAudioBlob = () => {
+    if (audioChunksRef.current.length === 0) return null;
+    return new Blob(audioChunksRef.current, { type: 'audio/webm' });
   };
 
   // ===== Mic button handler =====
@@ -197,21 +225,23 @@ function StoryViewer({ story, language, onBack }) {
       setFlowState(FLOW_STATES.READING);
       setSpokenText('');
       setWordResults(null);
-      startRecognition();
+      await startRecording();
     } else if (flowState === FLOW_STATES.READING) {
       // Stop reading and analyze
       const transcript = spokenText;
-      stopRecognition();
+      stopRecording();
+      const audioBlob = getAudioBlob();
       setFlowState(FLOW_STATES.ANALYZING);
-      addChildMessage(transcript || '(no speech detected)');
-      await analyzeReading(transcript);
+      addChildMessage(transcript || '(reading recorded)');
+      await analyzeReading(audioBlob);
     } else if (flowState === FLOW_STATES.CHILD_PRACTICING) {
       // Stop practice recording and evaluate
       const transcript = spokenText;
-      stopRecognition();
+      stopRecording();
+      const audioBlob = getAudioBlob();
       setFlowState(FLOW_STATES.EVALUATING);
-      addChildMessage(transcript || '(no speech detected)');
-      await evaluatePractice(transcript);
+      addChildMessage(transcript || '(practice recorded)');
+      await evaluatePractice(audioBlob);
     } else if (
       flowState === FLOW_STATES.TUTOR_FEEDBACK ||
       flowState === FLOW_STATES.TUTOR_PRACTICE ||
@@ -221,21 +251,27 @@ function StoryViewer({ story, language, onBack }) {
       stopAudio();
       setFlowState(FLOW_STATES.CHILD_PRACTICING);
       setSpokenText('');
-      startRecognition();
+      await startRecording();
     }
   };
 
   // ===== Analyze reading =====
-  const analyzeReading = async (transcript) => {
+  const analyzeReading = async (audioBlob) => {
     try {
+      if (!audioBlob) {
+        setFlowState(FLOW_STATES.IDLE);
+        addTutorMessage('I didn\'t hear anything. Press the mic and try reading again!');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('originalText', page.text);
+      formData.append('nativeLanguage', language);
+
       const res = await fetch('/api/voice/analyze-reading', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalText: page.text,
-          spokenText: transcript,
-          nativeLanguage: language,
-        }),
+        body: formData,
       });
       const data = await res.json();
 
@@ -248,7 +284,7 @@ function StoryViewer({ story, language, onBack }) {
         await playTTS(data.feedback);
       }
 
-      // Step 2: Practice phrase (if there are incorrect words)
+      // Step 2: Practice phrase (if there are poorly pronounced words)
       if (data.practicePhrase) {
         setPracticePhrase(data.practicePhrase);
         setPracticeExplanation(data.practiceExplanation);
@@ -258,7 +294,7 @@ function StoryViewer({ story, language, onBack }) {
         await playTTS(practiceMsg);
         // Wait for child to press mic
       } else {
-        // All correct - tell them to move on
+        // All good - tell them to move on
         setFlowState(FLOW_STATES.COMPLETE);
         const doneMsg = isLastPage
           ? 'Amazing! You finished the whole story! Great reading!'
@@ -274,16 +310,22 @@ function StoryViewer({ story, language, onBack }) {
   };
 
   // ===== Evaluate practice =====
-  const evaluatePractice = async (transcript) => {
+  const evaluatePractice = async (audioBlob) => {
     try {
+      if (!audioBlob) {
+        setFlowState(FLOW_STATES.TUTOR_PRACTICE);
+        addTutorMessage('I didn\'t hear anything. Press the mic and try again!');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('practicePhrase', practicePhrase);
+      formData.append('nativeLanguage', language);
+
       const res = await fetch('/api/voice/evaluate-practice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          practicePhrase,
-          spokenText: transcript,
-          nativeLanguage: language,
-        }),
+        body: formData,
       });
       const data = await res.json();
 

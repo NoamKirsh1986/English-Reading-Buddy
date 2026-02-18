@@ -14,11 +14,15 @@ export async function generateStory() {
   return response.json();
 }
 
-export async function analyzeReading(originalText, spokenText, nativeLanguage) {
+export async function analyzeReading(audioBlob, originalText, nativeLanguage) {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.wav');
+  formData.append('originalText', originalText);
+  formData.append('nativeLanguage', nativeLanguage);
+
   const response = await fetch(`${API_BASE}/voice/analyze-reading`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ originalText, spokenText, nativeLanguage }),
+    body: formData,
   });
 
   if (!response.ok) {
@@ -28,11 +32,15 @@ export async function analyzeReading(originalText, spokenText, nativeLanguage) {
   return response.json();
 }
 
-export async function evaluatePractice(practicePhrase, spokenText, nativeLanguage) {
+export async function evaluatePractice(audioBlob, practicePhrase, nativeLanguage) {
+  const formData = new FormData();
+  formData.append('audio', audioBlob, 'recording.wav');
+  formData.append('practicePhrase', practicePhrase);
+  formData.append('nativeLanguage', nativeLanguage);
+
   const response = await fetch(`${API_BASE}/voice/evaluate-practice`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ practicePhrase, spokenText, nativeLanguage }),
+    body: formData,
   });
 
   if (!response.ok) {
