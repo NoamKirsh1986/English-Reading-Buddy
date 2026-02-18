@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const SPEECHACE_API_URL = 'https://api.speechace.co/api/scoring/text/v9/json';
+const SPEECHACE_API_URL = process.env.SPEECHACE_API_URL || 'https://api4.speechace.com/api/scoring/text/v9/json';
 
 // Resolve ffmpeg binary: prefer the npm-bundled version, fall back to system PATH
 let ffmpegPath = 'ffmpeg';
