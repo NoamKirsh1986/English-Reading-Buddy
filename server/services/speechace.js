@@ -6,6 +6,14 @@ const os = require('os');
 
 const SPEECHACE_API_URL = 'https://api.speechace.co/api/scoring/text/v9/json';
 
+// Resolve ffmpeg binary: prefer the npm-bundled version, fall back to system PATH
+let ffmpegPath = 'ffmpeg';
+try {
+  ffmpegPath = require('ffmpeg-static');
+} catch {
+  // ffmpeg-static not installed — use system ffmpeg
+}
+
 /**
  * Convert a WebM audio buffer to WAV format using ffmpeg.
  * SpeechAce requires WAV — the browser records in WebM/Opus.
@@ -18,7 +26,7 @@ function convertToWav(audioBuffer) {
   try {
     fs.writeFileSync(tmpInput, audioBuffer);
     execSync(
-      `ffmpeg -i "${tmpInput}" -ar 16000 -ac 1 -f wav "${tmpOutput}" -y`,
+      `"${ffmpegPath}" -i "${tmpInput}" -ar 16000 -ac 1 -f wav "${tmpOutput}" -y`,
       { stdio: 'pipe', timeout: 15000 }
     );
     return fs.readFileSync(tmpOutput);
