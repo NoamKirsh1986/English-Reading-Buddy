@@ -22,11 +22,22 @@ async function scorePronunciation(audioBuffer, referenceText) {
 
   const url = `${SPEECHACE_API_URL}?key=${encodeURIComponent(apiKey)}&dialect=en-us&user_id=student`;
 
-  const response = await fetch(url, {
+  const fetchOptions = {
     method: 'POST',
     body: form,
     headers: form.getHeaders(),
-  });
+  };
+
+  // Use proxy agent if available (set in index.js for containerized environments)
+  if (global.__proxyAgent) {
+    const nodeFetch = require('node-fetch');
+    var fetchFn = nodeFetch;
+    fetchOptions.agent = global.__proxyAgent;
+  } else {
+    var fetchFn = fetch;
+  }
+
+  const response = await fetchFn(url, fetchOptions);
 
   const data = await response.json();
 

@@ -4,9 +4,13 @@ const multer = require('multer');
 const OpenAI = require('openai');
 const { scorePronunciation, parseWordResults, buildScoreSummary } = require('../services/speechace');
 
-const openai = new OpenAI({
+const openaiOptions = {
   apiKey: process.env.OPENAI_API_KEY,
-});
+};
+if (global.__proxyFetch) {
+  openaiOptions.fetch = global.__proxyFetch;
+}
+const openai = new OpenAI(openaiOptions);
 
 // Multer stores uploaded audio in memory as a Buffer
 const upload = multer({

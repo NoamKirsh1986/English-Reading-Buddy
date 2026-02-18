@@ -1,5 +1,15 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
+// Configure global proxy support if HTTPS_PROXY is set (needed in containerized environments)
+if (process.env.HTTPS_PROXY || process.env.https_proxy) {
+  const { HttpsProxyAgent } = require('https-proxy-agent');
+  const nodeFetch = require('node-fetch');
+  const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy;
+  const agent = new HttpsProxyAgent(proxyUrl);
+  global.__proxyAgent = agent;
+  global.__proxyFetch = (url, init) => nodeFetch(url, { ...init, agent });
+}
+
 const express = require('express');
 const cors = require('cors');
 const storyRoutes = require('./routes/story');

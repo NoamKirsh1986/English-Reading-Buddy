@@ -1,8 +1,15 @@
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
+const openaiOptions = {
   apiKey: process.env.OPENAI_API_KEY,
-});
+};
+
+// Use proxy-aware fetch if available (set in index.js for containerized environments)
+if (global.__proxyFetch) {
+  openaiOptions.fetch = global.__proxyFetch;
+}
+
+const openai = new OpenAI(openaiOptions);
 
 async function generateStory() {
   const themes = [
