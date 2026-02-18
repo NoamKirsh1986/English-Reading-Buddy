@@ -102,6 +102,8 @@ router.post('/analyze-reading', upload.single('audio'), async (req, res) => {
     const wordResults = parseWordResults(speechAceData, originalText);
     const scoreSummary = buildScoreSummary(wordResults, speechAceData);
 
+    console.log(`Analyze: overall=${scoreSummary.overallScore}, correct=${scoreSummary.correctCount}/${scoreSummary.totalWords}, incorrect=[${scoreSummary.incorrectWords.map(w => `${w.word}:${w.score}`).join(', ')}]`);
+
     // Step 2: Generate child-friendly feedback with GPT-4o using the scores
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',

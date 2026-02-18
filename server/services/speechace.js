@@ -1,6 +1,32 @@
 const FormData = require('form-data');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 const SPEECHACE_API_URL = 'https://api.speechace.co/api/scoring/text/v9/json';
+
+/**
+ * Convert a WebM audio buffer to WAV format using ffmpeg.
+ * SpeechAce requires WAV — the browser records in WebM/Opus.
+ */
+function convertToWav(audioBuffer) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const tmpInput = path.join(os.tmpdir(), `speech-in-${id}.webm`);
+  const tmpOutput = path.join(os.tmpdir(), `speech-out-${id}.wav`);
+
+  try {
+    fs.writeFileSync(tmpInput, audioBuffer);
+    execSync(
+      `ffmpeg -i "${tmpInput}" -ar 16000 -ac 1 -f wav "${tmpOutput}" -y`,
+      { stdio: 'pipe', timeout: 15000 }
+    );
+    return fs.readFileSync(tmpOutput);
+  } finally {
+    try { fs.unlinkSync(tmpInput); } catch {}
+    try { fs.unlinkSync(tmpOutput); } catch {}
+  }
+}
 
 /**
  * Send audio to SpeechAce for pronunciation scoring.
@@ -12,9 +38,18 @@ async function scorePronunciation(audioBuffer, referenceText) {
     throw new Error('SPEECHACE_API_KEY is not configured');
   }
 
+  // Convert WebM from browser to WAV for SpeechAce
+  let wavBuffer;
+  try {
+    wavBuffer = convertToWav(audioBuffer);
+  } catch (err) {
+    console.error('Audio conversion failed:', err.message);
+    throw new Error('Failed to convert audio to WAV format');
+  }
+
   const form = new FormData();
   form.append('text', referenceText);
-  form.append('user_audio_file', audioBuffer, {
+  form.append('user_audio_file', wavBuffer, {
     filename: 'audio.wav',
     contentType: 'audio/wav',
   });
@@ -42,8 +77,12 @@ async function scorePronunciation(audioBuffer, referenceText) {
   const data = await response.json();
 
   if (data.status !== 'success') {
+    console.error('SpeechAce API error:', JSON.stringify(data, null, 2));
     throw new Error(`SpeechAce error: ${data.detail_message || JSON.stringify(data)}`);
   }
+
+  const wordCount = data.text_score?.word_score_list?.length ?? 0;
+  console.log(`SpeechAce scored ${wordCount} words, overall: ${data.text_score?.quality_score ?? 'N/A'}/100`);
 
   return data;
 }

@@ -153,9 +153,8 @@ function StoryViewer({ story, language, onBack }) {
       recognition.lang = 'en-US';
       recognitionRef.current = recognition;
 
-      let finalTranscript = '';
-
       recognition.onresult = (event) => {
+        let finalTranscript = '';
         let interim = '';
         for (let i = 0; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
