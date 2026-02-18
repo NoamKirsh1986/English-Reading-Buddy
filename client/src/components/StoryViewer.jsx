@@ -22,6 +22,10 @@ function StoryViewer({ story, language, onBack }) {
   const [practicePhrase, setPracticePhrase] = useState(null);
   const [practiceExplanation, setPracticeExplanation] = useState(null);
   const [isTutorSpeaking, setIsTutorSpeaking] = useState(false);
+  const [pageImages, setPageImages] = useState(() =>
+    story.pages.map((p) => p.imageUrl)
+  );
+  const [imageLoading, setImageLoading] = useState(false);
 
   const audioRef = useRef(null);
   const recognitionRef = useRef(null);
@@ -42,6 +46,31 @@ function StoryViewer({ story, language, onBack }) {
   useEffect(() => {
     resetPageState();
   }, [currentPage]);
+
+  // Lazy-load image for current page if not yet loaded
+  useEffect(() => {
+    if (pageImages[currentPage] || imageLoading) return;
+    let cancelled = false;
+    setImageLoading(true);
+    fetch('/api/story/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: story.pages[currentPage].text }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.imageUrl) {
+          setPageImages((prev) => {
+            const next = [...prev];
+            next[currentPage] = data.imageUrl;
+            return next;
+          });
+        }
+      })
+      .catch((err) => console.error('Image load error:', err))
+      .finally(() => { if (!cancelled) setImageLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentPage, pageImages, story.pages]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -383,15 +412,19 @@ function StoryViewer({ story, language, onBack }) {
         {/* Left side: Book */}
         <div className="book-panel">
           <div className="story-content">
-            {page.imageUrl && (
+            {pageImages[currentPage] ? (
               <div className="story-image-container">
                 <img
-                  src={page.imageUrl}
+                  src={pageImages[currentPage]}
                   alt="Story illustration"
                   className="story-image"
                 />
               </div>
-            )}
+            ) : imageLoading ? (
+              <div className="story-image-container">
+                <div className="image-placeholder">Drawing picture...</div>
+              </div>
+            ) : null}
 
             <KaraokeText
               text={page.text}

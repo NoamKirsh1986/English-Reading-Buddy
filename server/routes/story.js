@@ -11,14 +11,14 @@ router.post('/generate', async (req, res) => {
     console.log('Splitting story into pages...');
     const pages = splitIntoPages(story);
 
-    console.log(`Generating images for ${pages.length} pages...`);
-    const pagesWithImages = await Promise.all(
-      pages.map(async (text, index) => {
-        console.log(`  Generating image for page ${index + 1}/${pages.length}...`);
-        const imageUrl = await generateImage(openai, text);
-        return { text, imageUrl };
-      })
-    );
+    // Only generate the first page image upfront; the rest load on demand
+    console.log('Generating image for page 1 only...');
+    const firstImageUrl = await generateImage(openai, pages[0]);
+
+    const pagesWithImages = pages.map((text, index) => ({
+      text,
+      imageUrl: index === 0 ? firstImageUrl : null,
+    }));
 
     console.log('Story generation complete!');
     res.json({
@@ -29,6 +29,22 @@ router.post('/generate', async (req, res) => {
   } catch (error) {
     console.error('Story generation error:', error);
     res.status(500).json({ error: 'Failed to generate story. ' + error.message });
+  }
+});
+
+// Generate a single page image on demand
+router.post('/generate-image', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ error: 'No text provided' });
+    }
+    console.log('Generating on-demand image...');
+    const imageUrl = await generateImage(openai, text);
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Image generation error:', error);
+    res.status(500).json({ error: 'Failed to generate image' });
   }
 });
 
