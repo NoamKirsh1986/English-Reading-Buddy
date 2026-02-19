@@ -3,7 +3,7 @@ function PandaTutor({ isTalking, isListening }) {
     <div className="panda-character-container">
       <div className={`panda-character ${isTalking ? 'panda-talking' : ''} ${isListening ? 'panda-listening' : ''}`}>
         <img
-          src="/panda-tutor.png"
+          src="/panda-tutor.svg"
           alt="Panda Buddy"
           className="panda-avatar-img"
         />
