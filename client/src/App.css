@@ -419,181 +419,18 @@ body {
   animation: pandaIdle 3s ease-in-out infinite;
 }
 
+.panda-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .panda-character.panda-talking {
   animation: pandaTalk 0.6s ease-in-out infinite;
 }
 
 .panda-character.panda-listening {
   animation: pandaListen 2s ease-in-out infinite;
-}
-
-.panda-body {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
-/* Panda Ears */
-.panda-ear {
-  position: absolute;
-  width: 34px;
-  height: 34px;
-  background: #1a1a1a;
-  border-radius: 50%;
-  top: 2px;
-  z-index: 0;
-}
-
-.panda-ear-left {
-  left: 8px;
-}
-
-.panda-ear-right {
-  right: 8px;
-}
-
-/* Panda Head */
-.panda-head {
-  position: absolute;
-  top: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100px;
-  height: 90px;
-  background: white;
-  border-radius: 50%;
-  z-index: 1;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  border: 2px solid #eee;
-}
-
-/* Eye Patches */
-.panda-eye-patch {
-  position: absolute;
-  width: 28px;
-  height: 24px;
-  background: #1a1a1a;
-  border-radius: 50%;
-  top: 24px;
-  transform: rotate(-10deg);
-}
-
-.panda-eye-patch-left {
-  left: 14px;
-}
-
-.panda-eye-patch-right {
-  right: 14px;
-  transform: rotate(10deg);
-}
-
-/* Eyes */
-.panda-eye {
-  position: absolute;
-  width: 14px;
-  height: 16px;
-  background: white;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.panda-pupil {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #1a1a1a;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation: pandaBlink 4s ease-in-out infinite;
-}
-
-.panda-pupil::after {
-  content: '';
-  position: absolute;
-  width: 3px;
-  height: 3px;
-  background: white;
-  border-radius: 50%;
-  top: 1px;
-  right: 0px;
-}
-
-/* Nose */
-.panda-nose {
-  position: absolute;
-  width: 14px;
-  height: 10px;
-  background: #1a1a1a;
-  border-radius: 50%;
-  top: 52px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* Mouth */
-.panda-mouth {
-  position: absolute;
-  width: 16px;
-  height: 8px;
-  border-bottom: 2.5px solid #1a1a1a;
-  border-radius: 0 0 50% 50%;
-  top: 62px;
-  left: 50%;
-  transform: translateX(-50%);
-  transition: all 0.15s ease;
-}
-
-.panda-mouth-talking {
-  width: 18px;
-  height: 14px;
-  background: #ff6b6b;
-  border: 2px solid #1a1a1a;
-  border-radius: 50%;
-  animation: pandaMouthMove 0.3s ease-in-out infinite alternate;
-}
-
-/* Sunglasses on forehead */
-.panda-sunglasses {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  width: 70px;
-  height: 20px;
-}
-
-.panda-lens {
-  position: absolute;
-  width: 24px;
-  height: 16px;
-  background: linear-gradient(135deg, #333 0%, #555 100%);
-  border-radius: 4px;
-  border: 2px solid #222;
-  top: 0;
-}
-
-.panda-lens-left {
-  left: 6px;
-}
-
-.panda-lens-right {
-  right: 6px;
-}
-
-.panda-bridge {
-  position: absolute;
-  width: 12px;
-  height: 3px;
-  background: #222;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 2px;
 }
 
 /* Panda Animations */
@@ -613,16 +450,6 @@ body {
 @keyframes pandaListen {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-2px) rotate(2deg); }
-}
-
-@keyframes pandaMouthMove {
-  0% { height: 10px; width: 16px; }
-  100% { height: 16px; width: 20px; }
-}
-
-@keyframes pandaBlink {
-  0%, 45%, 55%, 100% { transform: translate(-50%, -50%) scaleY(1); }
-  50% { transform: translate(-50%, -50%) scaleY(0.1); }
 }
 
 /* ===== Tutor Messages ===== */
@@ -658,10 +485,11 @@ body {
   border-bottom-left-radius: 4px;
 }
 
-.child-message {
-  background: linear-gradient(135deg, #e3f2fd 0%, #e8eaf6 100%);
-  align-self: flex-end;
-  border-bottom-right-radius: 4px;
+.conversation-hint {
+  font-size: 0.85rem;
+  color: #43e97b;
+  font-weight: 700;
+  animation: fadeIn 0.3s ease-in;
 }
 
 .message-label {
@@ -675,10 +503,6 @@ body {
 
 .panda-message .message-label {
   color: #2e7d32;
-}
-
-.child-message .message-label {
-  color: #1565c0;
 }
 
 .tutor-message p {
@@ -790,55 +614,6 @@ body {
   .panda-character {
     width: 90px;
     height: 100px;
-  }
-
-  .panda-head {
-    width: 80px;
-    height: 72px;
-  }
-
-  .panda-ear {
-    width: 26px;
-    height: 26px;
-  }
-
-  .panda-eye-patch {
-    width: 22px;
-    height: 19px;
-    top: 18px;
-  }
-
-  .panda-eye-patch-left {
-    left: 10px;
-  }
-
-  .panda-eye-patch-right {
-    right: 10px;
-  }
-
-  .panda-nose {
-    top: 42px;
-  }
-
-  .panda-mouth {
-    top: 52px;
-  }
-
-  .panda-sunglasses {
-    width: 56px;
-    height: 16px;
-    top: 4px;
-  }
-
-  .panda-lens {
-    width: 18px;
-    height: 12px;
-  }
-
-  .panda-bridge {
-    width: 10px;
-    height: 2px;
-    top: 6px;
   }
 
   .page-navigation {

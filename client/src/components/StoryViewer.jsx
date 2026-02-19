@@ -10,6 +10,8 @@ const FLOW_STATES = {
   TUTOR_PRACTICE: 'tutor_practice',
   CHILD_PRACTICING: 'child_practicing',
   EVALUATING: 'evaluating',
+  CONVERSATION: 'conversation',
+  CONVERSATION_LISTENING: 'conversation_listening',
   COMPLETE: 'complete',
 };
 
@@ -32,6 +34,8 @@ function StoryViewer({ story, language, onBack }) {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const messagesEndRef = useRef(null);
+  const conversationHistoryRef = useRef([]);
+  const conversationTurnRef = useRef(0);
 
   const page = story.pages[currentPage];
   const isLastPage = currentPage === story.pages.length - 1;
@@ -47,30 +51,41 @@ function StoryViewer({ story, language, onBack }) {
     resetPageState();
   }, [currentPage]);
 
-  // Lazy-load image for current page if not yet loaded
+  // Prefetch image for next page when current page loads
   useEffect(() => {
-    if (pageImages[currentPage] || imageLoading) return;
-    let cancelled = false;
-    setImageLoading(true);
-    fetch('/api/story/generate-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: story.pages[currentPage].text }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled && data.imageUrl) {
+    const loadImage = async (pageIndex) => {
+      if (pageIndex >= story.pages.length || pageImages[pageIndex]) return;
+      try {
+        const res = await fetch('/api/story/generate-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: story.pages[pageIndex].text }),
+        });
+        const data = await res.json();
+        if (data.imageUrl) {
           setPageImages((prev) => {
             const next = [...prev];
-            next[currentPage] = data.imageUrl;
+            next[pageIndex] = data.imageUrl;
             return next;
           });
         }
-      })
-      .catch((err) => console.error('Image load error:', err))
-      .finally(() => { if (!cancelled) setImageLoading(false); });
-    return () => { cancelled = true; };
-  }, [currentPage, pageImages, story.pages]);
+      } catch (err) {
+        console.error('Image load error:', err);
+      }
+    };
+
+    // Load current page image if missing
+    if (!pageImages[currentPage]) {
+      setImageLoading(true);
+      loadImage(currentPage).finally(() => setImageLoading(false));
+    }
+
+    // Prefetch next page image in background
+    const nextPage = currentPage + 1;
+    if (nextPage < story.pages.length && !pageImages[nextPage]) {
+      loadImage(nextPage);
+    }
+  }, [currentPage, story.pages]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -90,14 +105,12 @@ function StoryViewer({ story, language, onBack }) {
     setPracticePhrase(null);
     setPracticeExplanation(null);
     setIsTutorSpeaking(false);
+    conversationHistoryRef.current = [];
+    conversationTurnRef.current = 0;
   };
 
   const addTutorMessage = (text) => {
     setTutorMessages((prev) => [...prev, { type: 'tutor', text }]);
-  };
-
-  const addChildMessage = (text) => {
-    setTutorMessages((prev) => [...prev, { type: 'child', text }]);
   };
 
   // ===== Audio playback helpers =====
@@ -164,7 +177,7 @@ function StoryViewer({ story, language, onBack }) {
         }
       };
 
-      mediaRecorder.start(100); // Collect data every 100ms
+      mediaRecorder.start(100);
       mediaRecorderRef.current = mediaRecorder;
     } catch (err) {
       console.error('Failed to start MediaRecorder:', err);
@@ -218,7 +231,6 @@ function StoryViewer({ story, language, onBack }) {
   };
 
   const stopRecording = () => {
-    // Stop Web Speech API
     if (recognitionRef.current) {
       const recognition = recognitionRef.current;
       recognitionRef.current = null;
@@ -229,14 +241,12 @@ function StoryViewer({ story, language, onBack }) {
       }
     }
 
-    // Stop MediaRecorder and its stream
     if (mediaRecorderRef.current) {
       const recorder = mediaRecorderRef.current;
       mediaRecorderRef.current = null;
       if (recorder.state !== 'inactive') {
         recorder.stop();
       }
-      // Stop all tracks on the mic stream
       recorder.stream?.getTracks().forEach((track) => track.stop());
     }
   };
@@ -256,20 +266,28 @@ function StoryViewer({ story, language, onBack }) {
       await startRecording();
     } else if (flowState === FLOW_STATES.READING) {
       // Stop reading and analyze
-      const transcript = spokenText;
       stopRecording();
       const audioBlob = getAudioBlob();
       setFlowState(FLOW_STATES.ANALYZING);
-      addChildMessage(transcript || '(reading recorded)');
       await analyzeReading(audioBlob);
     } else if (flowState === FLOW_STATES.CHILD_PRACTICING) {
       // Stop practice recording and evaluate
-      const transcript = spokenText;
       stopRecording();
       const audioBlob = getAudioBlob();
       setFlowState(FLOW_STATES.EVALUATING);
-      addChildMessage(transcript || '(practice recorded)');
       await evaluatePractice(audioBlob);
+    } else if (flowState === FLOW_STATES.CONVERSATION_LISTENING) {
+      // Stop conversation recording and get tutor reply
+      const transcript = spokenText;
+      stopRecording();
+      setFlowState(FLOW_STATES.CONVERSATION);
+      await handleConversationTurn(transcript);
+    } else if (flowState === FLOW_STATES.CONVERSATION) {
+      // Child wants to speak during conversation - start listening
+      stopAudio();
+      setFlowState(FLOW_STATES.CONVERSATION_LISTENING);
+      setSpokenText('');
+      await startRecording();
     } else if (
       flowState === FLOW_STATES.TUTOR_FEEDBACK ||
       flowState === FLOW_STATES.TUTOR_PRACTICE ||
@@ -280,6 +298,50 @@ function StoryViewer({ story, language, onBack }) {
       setFlowState(FLOW_STATES.CHILD_PRACTICING);
       setSpokenText('');
       await startRecording();
+    }
+  };
+
+  // ===== Conversation turn handler =====
+  const handleConversationTurn = async (childText) => {
+    try {
+      conversationHistoryRef.current.push({ role: 'child', text: childText });
+      conversationTurnRef.current += 1;
+
+      const res = await fetch('/api/voice/tutor-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childText,
+          conversationHistory: conversationHistoryRef.current,
+          pageText: page.text,
+          nativeLanguage: language,
+        }),
+      });
+      const data = await res.json();
+      const reply = data.reply || 'Great job! Let\'s move to the next page!';
+
+      conversationHistoryRef.current.push({ role: 'tutor', text: reply });
+      addTutorMessage(reply);
+      await playTTS(reply);
+
+      // After 2-3 turns, move to practice or complete
+      if (conversationTurnRef.current >= 2) {
+        if (practicePhrase) {
+          setFlowState(FLOW_STATES.TUTOR_PRACTICE);
+          const practiceMsg = `Now try saying: "${practicePhrase}" - ${practiceExplanation || ''}`;
+          addTutorMessage(practiceMsg);
+          await playTTS(practiceMsg);
+        } else {
+          setFlowState(FLOW_STATES.COMPLETE);
+        }
+      } else {
+        // Still in conversation - wait for child to press mic
+        setFlowState(FLOW_STATES.CONVERSATION);
+      }
+    } catch (err) {
+      console.error('Conversation error:', err);
+      setFlowState(FLOW_STATES.COMPLETE);
+      addTutorMessage('Great talking! Let\'s move to the next page!');
     }
   };
 
@@ -305,24 +367,37 @@ function StoryViewer({ story, language, onBack }) {
 
       setWordResults(data.wordResults || null);
 
-      // Step 1: Tutor feedback (reads sentence + explains)
+      // Save practice info for later (after conversation)
+      if (data.practicePhrase) {
+        setPracticePhrase(data.practicePhrase);
+        setPracticeExplanation(data.practiceExplanation);
+      }
+
+      // Step 1: Tutor reads sentence back and explains in native language
       if (data.feedback) {
         setFlowState(FLOW_STATES.TUTOR_FEEDBACK);
         addTutorMessage(data.feedback);
         await playTTS(data.feedback);
       }
 
-      // Step 2: Practice phrase (if there are poorly pronounced words)
-      if (data.practicePhrase) {
-        setPracticePhrase(data.practicePhrase);
-        setPracticeExplanation(data.practiceExplanation);
+      // Step 2: Ask follow-up question to start conversation
+      if (data.followUpQuestion) {
+        addTutorMessage(data.followUpQuestion);
+        await playTTS(data.followUpQuestion);
+        // Initialize conversation history
+        conversationHistoryRef.current = [
+          { role: 'tutor', text: data.feedback },
+          { role: 'tutor', text: data.followUpQuestion },
+        ];
+        conversationTurnRef.current = 0;
+        setFlowState(FLOW_STATES.CONVERSATION);
+      } else if (data.practicePhrase) {
+        // No follow-up question, go straight to practice
         setFlowState(FLOW_STATES.TUTOR_PRACTICE);
         const practiceMsg = `Now try saying: "${data.practicePhrase}" - ${data.practiceExplanation || ''}`;
         addTutorMessage(practiceMsg);
         await playTTS(practiceMsg);
-        // Wait for child to press mic
       } else {
-        // All good - tell them to move on
         setFlowState(FLOW_STATES.COMPLETE);
         const doneMsg = isLastPage
           ? 'Amazing! You finished the whole story! Great reading!'
@@ -384,18 +459,23 @@ function StoryViewer({ story, language, onBack }) {
   // ===== Mic button state =====
   const isMicActive =
     flowState === FLOW_STATES.READING ||
-    flowState === FLOW_STATES.CHILD_PRACTICING;
+    flowState === FLOW_STATES.CHILD_PRACTICING ||
+    flowState === FLOW_STATES.CONVERSATION_LISTENING;
 
   const getMicLabel = () => {
     if (isMicActive) return 'Stop';
     if (flowState === FLOW_STATES.IDLE) return 'Read';
     if (flowState === FLOW_STATES.ANALYZING || flowState === FLOW_STATES.EVALUATING) return '...';
+    if (flowState === FLOW_STATES.CONVERSATION) return 'Talk';
     if (flowState === FLOW_STATES.TUTOR_PRACTICE) return 'Speak';
     return 'Speak';
   };
 
   const isMicDisabled =
     flowState === FLOW_STATES.ANALYZING || flowState === FLOW_STATES.EVALUATING;
+
+  // Filter messages to only show tutor messages in transcript
+  const visibleMessages = tutorMessages.filter((msg) => msg.type === 'tutor');
 
   return (
     <div className="story-viewer">
@@ -460,19 +540,14 @@ function StoryViewer({ story, language, onBack }) {
           />
 
           <div className="tutor-messages">
-            {tutorMessages.length === 0 && (
+            {visibleMessages.length === 0 && (
               <div className="tutor-hint">
                 Press the microphone to start reading!
               </div>
             )}
-            {tutorMessages.map((msg, i) => (
-              <div
-                key={i}
-                className={`tutor-message ${msg.type === 'child' ? 'child-message' : 'panda-message'}`}
-              >
-                <span className="message-label">
-                  {msg.type === 'child' ? 'You' : 'Panda'}
-                </span>
+            {visibleMessages.map((msg, i) => (
+              <div key={i} className="tutor-message panda-message">
+                <span className="message-label">Panda</span>
                 <p>{msg.text}</p>
               </div>
             ))}
@@ -499,6 +574,9 @@ function StoryViewer({ story, language, onBack }) {
             </button>
             {isMicActive && (
               <div className="recording-indicator">Listening...</div>
+            )}
+            {flowState === FLOW_STATES.CONVERSATION && !isTutorSpeaking && (
+              <div className="conversation-hint">Press mic to answer!</div>
             )}
           </div>
         </div>

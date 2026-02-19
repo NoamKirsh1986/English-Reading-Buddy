@@ -11,13 +11,17 @@ router.post('/generate', async (req, res) => {
     console.log('Splitting story into pages...');
     const pages = splitIntoPages(story);
 
-    // Only generate the first page image upfront; the rest load on demand
-    console.log('Generating image for page 1 only...');
-    const firstImageUrl = await generateImage(openai, pages[0]);
+    // Generate images for the first 2 pages in parallel
+    const pagesToPrefetch = Math.min(2, pages.length);
+    console.log(`Generating images for first ${pagesToPrefetch} pages...`);
+    const imagePromises = pages.slice(0, pagesToPrefetch).map((text) =>
+      generateImage(openai, text)
+    );
+    const images = await Promise.all(imagePromises);
 
     const pagesWithImages = pages.map((text, index) => ({
       text,
-      imageUrl: index === 0 ? firstImageUrl : null,
+      imageUrl: index < pagesToPrefetch ? images[index] : null,
     }));
 
     console.log('Story generation complete!');

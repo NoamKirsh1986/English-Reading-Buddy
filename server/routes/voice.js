@@ -112,13 +112,17 @@ router.post('/analyze-reading', upload.single('audio'), async (req, res) => {
           role: 'system',
           content: `You are a friendly English reading tutor for children who speak ${nativeLanguage}.
 You have pronunciation assessment scores for each word the child read.
-Use these scores to provide helpful, encouraging feedback.
 
 Return a JSON object with:
-1. "feedback": A short, encouraging message (2-3 sentences) in a mix of simple English and ${nativeLanguage}. Read the sentence for the child and explain what it means in ${nativeLanguage}. If they struggled with specific words, mention those gently.
-2. "practiceWord": The word with the lowest pronunciation score (pick from words scoring below 60). If all words scored 60+, set to null.
-3. "practicePhrase": A short, simple phrase (3-6 words) using the practiceWord in a new context. Example: if the word is "night", the phrase could be "I sleep at night". If no practice needed, set to null.
-4. "practiceExplanation": Brief explanation of the practice phrase in ${nativeLanguage}. If no practice needed, set to null.
+1. "feedback": Your response should do three things in order:
+   a. First, read the sentence back to the child naturally in English.
+   b. Then explain what it means in ${nativeLanguage}.
+   c. If they struggled with specific words (scored below 60), mention those gently.
+   Keep this to 2-4 sentences, mixing English and ${nativeLanguage}.
+2. "followUpQuestion": A simple, fun follow-up question connected to the content of the sentence. For example, if the sentence is about a bird, ask "Do you like birds? What is your favorite animal?". Ask in English with a ${nativeLanguage} translation. This should invite the child to speak.
+3. "practiceWord": The word with the lowest pronunciation score (pick from words scoring below 60). If all words scored 60+, set to null.
+4. "practicePhrase": A short, simple phrase (3-6 words) using the practiceWord in a new context. If no practice needed, set to null.
+5. "practiceExplanation": Brief explanation of the practice phrase in ${nativeLanguage}. If no practice needed, set to null.
 
 Return ONLY valid JSON, no markdown fences.`,
         },
@@ -141,6 +145,7 @@ Words needing practice (scored below 60): ${scoreSummary.incorrectWords.map((w) 
     res.json({
       wordResults,
       feedback: gptResult.feedback,
+      followUpQuestion: gptResult.followUpQuestion || null,
       practiceWord: gptResult.practiceWord,
       practicePhrase: gptResult.practicePhrase,
       practiceExplanation: gptResult.practiceExplanation,
@@ -195,6 +200,52 @@ Return ONLY valid JSON, no markdown fences.`,
   } catch (error) {
     console.error('Evaluate practice error:', error);
     res.status(500).json({ error: 'Failed to evaluate practice' });
+  }
+});
+
+// Tutor conversation turn: respond to child's spoken input during follow-up chat
+router.post('/tutor-chat', async (req, res) => {
+  try {
+    const { childText, conversationHistory, pageText, nativeLanguage } = req.body;
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a warm, friendly English tutor for a child who speaks ${nativeLanguage}.
+You are having a short conversation with the child about a sentence they just read: "${pageText}"
+You may freely mix English and ${nativeLanguage} — match the child's level.
+Keep your responses short (1-3 sentences). Be encouraging and playful.
+If this is your first turn, you've already explained the sentence — now ask a simple follow-up question related to it (e.g. "What is YOUR favorite food?" if the sentence mentions food).
+After 2-3 exchanges, gently tell the child "Great talking! Let's go to the next page!" in a mix of English and ${nativeLanguage}.
+Return ONLY your spoken response text, nothing else.`,
+      },
+    ];
+
+    // Add conversation history
+    if (conversationHistory) {
+      for (const msg of conversationHistory) {
+        messages.push({
+          role: msg.role === 'tutor' ? 'assistant' : 'user',
+          content: msg.text,
+        });
+      }
+    }
+
+    // Add the child's latest message
+    messages.push({ role: 'user', content: childText || '(child spoke but was not understood)' });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages,
+      max_tokens: 200,
+      temperature: 0.7,
+    });
+
+    const tutorReply = response.choices[0].message.content.trim();
+    res.json({ reply: tutorReply });
+  } catch (error) {
+    console.error('Tutor chat error:', error);
+    res.status(500).json({ error: 'Failed to generate tutor response' });
   }
 });
 

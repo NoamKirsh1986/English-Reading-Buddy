@@ -33,11 +33,13 @@ async function generateStory() {
       {
         role: 'system',
         content: `You are a children's story writer for kids learning English as a second language.
-Write simple, engaging stories using basic vocabulary and short sentences.
-Stories must be under 250 words.
+Write a short, engaging story with a clear beginning, middle, and end.
+The story should have a coherent narrative — each sentence should connect to the previous one and advance the plot.
+Use basic vocabulary and short sentences (one sentence per "page").
+Stories must be 6-10 sentences long and under 250 words total.
 Use present tense where possible.
 Include some repetition of key words to help learning.
-Make the stories fun and imaginative.
+Make the stories fun and imaginative with a simple moral or happy ending.
 Return ONLY the story text — no title, no labels, no extra formatting.`,
       },
       {

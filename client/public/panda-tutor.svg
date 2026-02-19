@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+  <!-- Body -->
+  <ellipse cx="100" cy="190" rx="55" ry="30" fill="#1a1a2e"/>
+
+  <!-- Belly -->
+  <ellipse cx="100" cy="185" rx="35" ry="20" fill="#f0f0f0"/>
+
+  <!-- Left arm -->
+  <ellipse cx="52" cy="170" rx="18" ry="12" fill="#1a1a2e" transform="rotate(-20 52 170)"/>
+  <!-- Right arm -->
+  <ellipse cx="148" cy="170" rx="18" ry="12" fill="#1a1a2e" transform="rotate(20 148 170)"/>
+
+  <!-- Head -->
+  <circle cx="100" cy="100" r="65" fill="#f5f5f5"/>
+  <circle cx="100" cy="100" r="63" fill="#fafafa" stroke="#e0e0e0" stroke-width="1"/>
+
+  <!-- Ears -->
+  <circle cx="48" cy="52" r="22" fill="#1a1a2e"/>
+  <circle cx="48" cy="52" r="12" fill="#ff8fab"/>
+  <circle cx="152" cy="52" r="22" fill="#1a1a2e"/>
+  <circle cx="152" cy="52" r="12" fill="#ff8fab"/>
+
+  <!-- Eye patches -->
+  <ellipse cx="72" cy="95" rx="24" ry="20" fill="#1a1a2e" transform="rotate(-5 72 95)"/>
+  <ellipse cx="128" cy="95" rx="24" ry="20" fill="#1a1a2e" transform="rotate(5 128 95)"/>
+
+  <!-- Eyes (white) -->
+  <ellipse cx="72" cy="93" rx="14" ry="15" fill="white"/>
+  <ellipse cx="128" cy="93" rx="14" ry="15" fill="white"/>
+
+  <!-- Pupils -->
+  <circle cx="75" cy="93" r="8" fill="#1a1a2e"/>
+  <circle cx="131" cy="93" r="8" fill="#1a1a2e"/>
+
+  <!-- Eye shine -->
+  <circle cx="78" cy="89" r="3" fill="white"/>
+  <circle cx="134" cy="89" r="3" fill="white"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="112" rx="8" ry="6" fill="#1a1a2e"/>
+  <ellipse cx="98" cy="110" rx="2" ry="1.5" fill="#444"/>
+
+  <!-- Smile -->
+  <path d="M 88 120 Q 100 132 112 120" fill="none" stroke="#1a1a2e" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Rosy cheeks -->
+  <ellipse cx="60" cy="112" rx="10" ry="7" fill="#ffb3c1" opacity="0.5"/>
+  <ellipse cx="140" cy="112" rx="10" ry="7" fill="#ffb3c1" opacity="0.5"/>
+
+  <!-- Headband -->
+  <path d="M 38 72 Q 100 45 162 72" fill="none" stroke="#ff6b6b" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Star on headband -->
+  <polygon points="100,52 103,60 111,61 105,66 107,74 100,70 93,74 95,66 89,61 97,60" fill="#ffd700"/>
+
+  <!-- Feet -->
+  <ellipse cx="78" cy="215" rx="16" ry="8" fill="#1a1a2e"/>
+  <ellipse cx="122" cy="215" rx="16" ry="8" fill="#1a1a2e"/>
+</svg>
