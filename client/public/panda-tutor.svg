@@ -1,9 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260">
   <defs>
     <!-- Soft shadow filter -->
     <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
       <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000022"/>
     </filter>
+    <!-- Warm sky background gradient -->
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8f4f8"/>
+      <stop offset="60%" stop-color="#fdf6e3"/>
+      <stop offset="100%" stop-color="#d4edda"/>
+    </linearGradient>
     <!-- Radial gradient for 3D roundness on head -->
     <radialGradient id="headGrad" cx="45%" cy="38%" r="55%">
       <stop offset="0%" stop-color="#ffffff"/>
@@ -31,6 +37,18 @@
       <stop offset="100%" stop-color="#111111"/>
     </radialGradient>
   </defs>
+
+  <!-- === BACKGROUND === -->
+  <rect x="0" y="0" width="200" height="260" fill="url(#skyGrad)" rx="16"/>
+
+  <!-- Grass ground -->
+  <ellipse cx="100" cy="240" rx="110" ry="30" fill="#7bc67e"/>
+  <ellipse cx="100" cy="238" rx="105" ry="26" fill="#8fd18f"/>
+  <!-- Grass tufts -->
+  <ellipse cx="30" cy="235" rx="8" ry="4" fill="#6ab86d"/>
+  <ellipse cx="170" cy="237" rx="7" ry="3.5" fill="#6ab86d"/>
+  <ellipse cx="60" cy="240" rx="6" ry="3" fill="#6ab86d"/>
+  <ellipse cx="145" cy="242" rx="7" ry="3" fill="#6ab86d"/>
 
   <!-- === BODY (round, sitting) === -->
   <ellipse cx="100" cy="185" rx="52" ry="42" fill="url(#bodyGrad)" filter="url(#shadow)"/>
