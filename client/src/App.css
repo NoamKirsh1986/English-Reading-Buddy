@@ -290,54 +290,33 @@ body {
   display: block;
 }
 
-/* ===== Karaoke Text ===== */
-.karaoke-container {
+/* ===== Sentence Text ===== */
+.sentence-container {
   padding: 24px 30px;
 }
 
-.karaoke-text {
+.sentence-text {
   font-size: 1.6rem;
   line-height: 2.2;
   text-align: center;
 }
 
-.karaoke-word {
+.sentence-word {
   padding: 2px 4px;
   border-radius: 6px;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: inline;
 }
 
-.word-read {
-  color: #667eea;
-}
-
-.word-current {
-  background: #ffd700;
-  color: #333;
+.word-highlight {
+  color: #e74c3c;
   font-weight: 700;
-  border-radius: 6px;
-  padding: 2px 6px;
-  animation: pulse 0.5s ease-in-out;
-}
-
-.word-correct {
-  color: #2ecc71;
-  font-weight: 700;
-}
-
-.word-incorrect {
-  color: #e67e22;
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-color: #e67e22;
+  text-decoration: wavy underline;
+  text-decoration-color: #e74c3c;
   text-underline-offset: 4px;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  background: rgba(231, 76, 60, 0.08);
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
 .reading-hint {
@@ -346,6 +325,13 @@ body {
   font-style: italic;
   margin-top: 10px;
   animation: fadeIn 0.5s ease-in;
+}
+
+.processing-indicator {
+  font-size: 0.8rem;
+  color: #667eea;
+  font-weight: 700;
+  animation: fadeIn 0.3s ease-in;
 }
 
 /* ===== Page Navigation ===== */
@@ -602,12 +588,12 @@ body {
     font-size: 1.8rem;
   }
 
-  .karaoke-text {
+  .sentence-text {
     font-size: 1.3rem;
     line-height: 2;
   }
 
-  .karaoke-container {
+  .sentence-container {
     padding: 20px;
   }
 

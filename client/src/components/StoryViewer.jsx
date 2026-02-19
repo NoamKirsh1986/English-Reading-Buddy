@@ -1,45 +1,45 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import KaraokeText from './KaraokeText';
+import { useState, useEffect, useRef } from 'react';
 import PandaTutor from './PandaTutor';
 
 const FLOW_STATES = {
   IDLE: 'idle',
+  CONNECTING: 'connecting',
   READING: 'reading',
-  ANALYZING: 'analyzing',
-  TUTOR_FEEDBACK: 'tutor_feedback',
-  TUTOR_PRACTICE: 'tutor_practice',
-  CHILD_PRACTICING: 'child_practicing',
-  EVALUATING: 'evaluating',
-  CONVERSATION: 'conversation',
-  CONVERSATION_LISTENING: 'conversation_listening',
-  COMPLETE: 'complete',
+  PROCESSING: 'processing',
+  FEEDBACK: 'feedback',
 };
 
 function StoryViewer({ story, language, onBack }) {
   const [currentPage, setCurrentPage] = useState(0);
   const [flowState, setFlowState] = useState(FLOW_STATES.IDLE);
-  const [spokenText, setSpokenText] = useState('');
-  const [wordResults, setWordResults] = useState(null);
+  const [incorrectWords, setIncorrectWords] = useState([]);
+  const [shouldRetry, setShouldRetry] = useState(false);
   const [tutorMessages, setTutorMessages] = useState([]);
-  const [practicePhrase, setPracticePhrase] = useState(null);
-  const [practiceExplanation, setPracticeExplanation] = useState(null);
   const [isTutorSpeaking, setIsTutorSpeaking] = useState(false);
   const [pageImages, setPageImages] = useState(() =>
     story.pages.map((p) => p.imageUrl)
   );
   const [imageLoading, setImageLoading] = useState(false);
 
-  const audioRef = useRef(null);
-  const recognitionRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const wsRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const processorRef = useRef(null);
+  const streamRef = useRef(null);
+  const playbackContextRef = useRef(null);
+  const nextPlayTimeRef = useRef(0);
+  const currentSourcesRef = useRef([]);
   const messagesEndRef = useRef(null);
-  const conversationHistoryRef = useRef([]);
-  const conversationTurnRef = useRef(0);
+  const functionCallArgsRef = useRef('');
+  const eventHandlerRef = useRef(null);
 
   const page = story.pages[currentPage];
   const isLastPage = currentPage === story.pages.length - 1;
   const isFirstPage = currentPage === 0;
+
+  // Keep the event handler ref up to date so WebSocket always calls the latest version
+  eventHandlerRef.current = (event) => {
+    handleRealtimeEvent(event);
+  };
 
   // Auto-scroll tutor messages
   useEffect(() => {
@@ -51,7 +51,7 @@ function StoryViewer({ story, language, onBack }) {
     resetPageState();
   }, [currentPage]);
 
-  // Prefetch image for next page when current page loads
+  // Prefetch images
   useEffect(() => {
     const loadImage = async (pageIndex) => {
       if (pageIndex >= story.pages.length || pageImages[pageIndex]) return;
@@ -74,13 +74,11 @@ function StoryViewer({ story, language, onBack }) {
       }
     };
 
-    // Load current page image if missing
     if (!pageImages[currentPage]) {
       setImageLoading(true);
       loadImage(currentPage).finally(() => setImageLoading(false));
     }
 
-    // Prefetch next page image in background
     const nextPage = currentPage + 1;
     if (nextPage < story.pages.length && !pageImages[nextPage]) {
       loadImage(nextPage);
@@ -90,392 +88,457 @@ function StoryViewer({ story, language, onBack }) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopAudio();
-      stopRecording();
+      disconnectRealtime();
+      stopMicCapture();
     };
   }, []);
 
   const resetPageState = () => {
-    stopAudio();
-    stopRecording();
+    stopMicCapture();
+    stopPlayback();
     setFlowState(FLOW_STATES.IDLE);
-    setSpokenText('');
-    setWordResults(null);
+    setIncorrectWords([]);
+    setShouldRetry(false);
     setTutorMessages([]);
-    setPracticePhrase(null);
-    setPracticeExplanation(null);
     setIsTutorSpeaking(false);
-    conversationHistoryRef.current = [];
-    conversationTurnRef.current = 0;
+    functionCallArgsRef.current = '';
   };
 
   const addTutorMessage = (text) => {
     setTutorMessages((prev) => [...prev, { type: 'tutor', text }]);
   };
 
-  // ===== Audio playback helpers =====
-  const stopAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
+  // ===== WebSocket connection to Realtime API (via server proxy) =====
+  const connectRealtime = () => {
+    return new Promise((resolve, reject) => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        resolve();
+        return;
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${protocol}//${window.location.host}/ws/realtime`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('WebSocket connected to server');
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        // Resolve the promise when session is created
+        if (data.type === 'session.created') {
+          resolve();
+        }
+
+        // Delegate to the latest handler via ref
+        eventHandlerRef.current?.(data);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        reject(err);
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected');
+        wsRef.current = null;
+      };
+    });
+  };
+
+  const disconnectRealtime = () => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+  };
+
+  const sendEvent = (event) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(event));
+    }
+  };
+
+  // Configure session for current page
+  const configureSession = (pageText) => {
+    sendEvent({
+      type: 'session.update',
+      session: {
+        instructions: `You are "Panda Buddy", a warm, friendly, and encouraging English reading tutor for children who speak ${language}.
+
+The child is going to read this sentence aloud: "${pageText}"
+
+YOUR TASK:
+1. Listen to the child read the sentence without interrupting.
+2. When the child finishes, FIRST call the provide_reading_feedback function to report which specific words were mispronounced, skipped, or read incorrectly. Compare what you heard to the expected sentence carefully.
+3. THEN speak your feedback:
+   a. Read the full sentence slowly and clearly in English so the child hears correct pronunciation.
+   b. Explain in ${language} what the sentence means.
+   c. If words were incorrect, mention them gently in ${language} and encourage the child to try reading again.
+   d. If the reading was perfect, praise the child enthusiastically and tell them to move to the next page.
+
+Keep your spoken response concise and warm (3-5 sentences). Mix English and ${language}.`,
+        tools: [
+          {
+            type: 'function',
+            name: 'provide_reading_feedback',
+            description:
+              'Report which words from the sentence the child read incorrectly, mispronounced, or skipped',
+            parameters: {
+              type: 'object',
+              properties: {
+                incorrect_words: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description:
+                    'The specific words from the original sentence that were mispronounced or skipped. Use the exact words as they appear in the sentence.',
+                },
+                should_retry: {
+                  type: 'boolean',
+                  description:
+                    'true if the child should try reading the sentence again, false if reading was good enough',
+                },
+              },
+              required: ['incorrect_words', 'should_retry'],
+            },
+          },
+        ],
+        tool_choice: 'auto',
+        voice: 'nova',
+        input_audio_transcription: {
+          model: 'whisper-1',
+        },
+        turn_detection: null, // Manual — we decide when to trigger response
+      },
+    });
+  };
+
+  // ===== Handle events from Realtime API =====
+  const handleRealtimeEvent = (event) => {
+    switch (event.type) {
+      case 'session.created':
+      case 'session.updated':
+        break;
+
+      case 'response.audio.delta':
+        if (event.delta) {
+          setIsTutorSpeaking(true);
+          playAudioChunk(event.delta);
+        }
+        break;
+
+      case 'response.audio_transcript.done':
+        if (event.transcript) {
+          addTutorMessage(event.transcript);
+        }
+        break;
+
+      case 'response.function_call_arguments.delta':
+        functionCallArgsRef.current += event.delta || '';
+        break;
+
+      case 'response.function_call_arguments.done': {
+        try {
+          const args = JSON.parse(
+            event.arguments || functionCallArgsRef.current
+          );
+          console.log('Reading feedback:', args);
+
+          if (args.incorrect_words && args.incorrect_words.length > 0) {
+            setIncorrectWords(
+              args.incorrect_words.map((w) => w.toLowerCase())
+            );
+            setShouldRetry(args.should_retry ?? true);
+          } else {
+            setIncorrectWords([]);
+            setShouldRetry(false);
+          }
+        } catch (err) {
+          console.error('Failed to parse function call args:', err);
+        }
+        break;
+      }
+
+      case 'response.output_item.done':
+        // When the function call item is done, send the result and trigger audio response
+        if (event.item?.type === 'function_call') {
+          sendEvent({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: event.item.call_id,
+              output: JSON.stringify({ status: 'ok' }),
+            },
+          });
+          // Reset args for next function call
+          functionCallArgsRef.current = '';
+          // Trigger the audio feedback response
+          sendEvent({ type: 'response.create' });
+        }
+        break;
+
+      case 'response.done': {
+        // Check if this response contained audio (the feedback response, not the function call response)
+        const hasAudio = event.response?.output?.some(
+          (item) => item.type === 'message'
+        );
+        if (hasAudio) {
+          setFlowState(FLOW_STATES.FEEDBACK);
+          // Give audio queue time to finish playing
+          setTimeout(() => {
+            setIsTutorSpeaking(false);
+          }, 1500);
+        }
+        break;
+      }
+
+      case 'error':
+        console.error('Realtime API error:', event.error);
+        setFlowState(FLOW_STATES.IDLE);
+        addTutorMessage('Oops, something went wrong. Try reading again!');
+        stopMicCapture();
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  // ===== Audio capture: stream PCM 16-bit 24kHz mono to Realtime API =====
+  const startMicCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, sampleRate: 24000 },
+      });
+      streamRef.current = stream;
+
+      const audioContext = new AudioContext({ sampleRate: 24000 });
+      audioContextRef.current = audioContext;
+
+      const source = audioContext.createMediaStreamSource(stream);
+      const processor = audioContext.createScriptProcessorNode(4096, 1, 1);
+      processorRef.current = processor;
+
+      processor.onaudioprocess = (e) => {
+        const float32 = e.inputBuffer.getChannelData(0);
+        // Convert Float32 to Int16
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+        // Base64 encode
+        const bytes = new Uint8Array(int16.buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+
+        sendEvent({
+          type: 'input_audio_buffer.append',
+          audio: base64,
+        });
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+    } catch (err) {
+      console.error('Failed to start mic:', err);
+      alert('Please allow microphone access to use the reading feature.');
+      throw err;
+    }
+  };
+
+  const stopMicCapture = () => {
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  // ===== Audio playback: stream PCM 16-bit 24kHz from Realtime API =====
+  const getPlaybackContext = () => {
+    if (
+      !playbackContextRef.current ||
+      playbackContextRef.current.state === 'closed'
+    ) {
+      playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
+      nextPlayTimeRef.current = 0;
+    }
+    return playbackContextRef.current;
+  };
+
+  const playAudioChunk = (base64Audio) => {
+    const ctx = getPlaybackContext();
+
+    // Decode base64 to Int16
+    const binaryStr = atob(base64Audio);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const int16 = new Int16Array(bytes.buffer);
+
+    // Convert Int16 to Float32
+    const float32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) {
+      float32[i] = int16[i] / 32768;
+    }
+
+    // Create AudioBuffer and schedule playback
+    const buffer = ctx.createBuffer(1, float32.length, 24000);
+    buffer.copyToChannel(float32, 0);
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    if (nextPlayTimeRef.current < now) {
+      nextPlayTimeRef.current = now + 0.05;
+    }
+    source.start(nextPlayTimeRef.current);
+    currentSourcesRef.current.push(source);
+    nextPlayTimeRef.current += buffer.duration;
+
+    source.onended = () => {
+      currentSourcesRef.current = currentSourcesRef.current.filter(
+        (s) => s !== source
+      );
+    };
+  };
+
+  const stopPlayback = () => {
+    currentSourcesRef.current.forEach((source) => {
+      try {
+        source.stop();
+      } catch (e) {
+        /* already stopped */
+      }
+    });
+    currentSourcesRef.current = [];
+    nextPlayTimeRef.current = 0;
+    if (
+      playbackContextRef.current &&
+      playbackContextRef.current.state !== 'closed'
+    ) {
+      playbackContextRef.current.close().catch(() => {});
+      playbackContextRef.current = null;
     }
     setIsTutorSpeaking(false);
   };
 
-  const playTTS = (text) => {
-    return new Promise(async (resolve) => {
-      try {
-        setIsTutorSpeaking(true);
-        const res = await fetch('/api/voice/tts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-
-        audio.onended = () => {
-          setIsTutorSpeaking(false);
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-          resolve('done');
-        };
-        audio.onerror = () => {
-          setIsTutorSpeaking(false);
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-          resolve('error');
-        };
-        await audio.play();
-      } catch (err) {
-        console.error('TTS error:', err);
-        setIsTutorSpeaking(false);
-        resolve('error');
-      }
-    });
-  };
-
-  // ===== Recording helpers (MediaRecorder for audio + Web Speech API for karaoke) =====
-  const startRecording = async () => {
-    audioChunksRef.current = [];
-
-    // Start MediaRecorder for actual audio capture
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-          ? 'audio/webm;codecs=opus'
-          : 'audio/webm',
-      });
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.start(100);
-      mediaRecorderRef.current = mediaRecorder;
-    } catch (err) {
-      console.error('Failed to start MediaRecorder:', err);
-      alert('Please allow microphone access to use the reading feature.');
-      return;
-    }
-
-    // Start Web Speech API for live karaoke text highlighting
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      recognitionRef.current = recognition;
-
-      recognition.onresult = (event) => {
-        let finalTranscript = '';
-        let interim = '';
-        for (let i = 0; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript + ' ';
-          } else {
-            interim += event.results[i][0].transcript;
-          }
-        }
-        setSpokenText((finalTranscript + interim).trim());
-      };
-
-      recognition.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
-      };
-
-      recognition.onend = () => {
-        if (recognitionRef.current === recognition) {
-          try {
-            recognition.start();
-          } catch (e) {
-            // already stopped
-          }
-        }
-      };
-
-      try {
-        recognition.start();
-      } catch (e) {
-        console.error('Failed to start recognition:', e);
-      }
-    }
-  };
-
-  const stopRecording = () => {
-    if (recognitionRef.current) {
-      const recognition = recognitionRef.current;
-      recognitionRef.current = null;
-      try {
-        recognition.stop();
-      } catch (e) {
-        // already stopped
-      }
-    }
-
-    if (mediaRecorderRef.current) {
-      const recorder = mediaRecorderRef.current;
-      mediaRecorderRef.current = null;
-      if (recorder.state !== 'inactive') {
-        recorder.stop();
-      }
-      recorder.stream?.getTracks().forEach((track) => track.stop());
-    }
-  };
-
-  const getAudioBlob = () => {
-    if (audioChunksRef.current.length === 0) return null;
-    return new Blob(audioChunksRef.current, { type: 'audio/webm' });
-  };
-
-  // ===== Mic button handler =====
+  // ===== Main mic button handler =====
   const handleMicPress = async () => {
-    if (flowState === FLOW_STATES.IDLE) {
-      // Start reading
-      setFlowState(FLOW_STATES.READING);
-      setSpokenText('');
-      setWordResults(null);
-      await startRecording();
-    } else if (flowState === FLOW_STATES.READING) {
-      // Stop reading and analyze
-      stopRecording();
-      const audioBlob = getAudioBlob();
-      setFlowState(FLOW_STATES.ANALYZING);
-      await analyzeReading(audioBlob);
-    } else if (flowState === FLOW_STATES.CHILD_PRACTICING) {
-      // Stop practice recording and evaluate
-      stopRecording();
-      const audioBlob = getAudioBlob();
-      setFlowState(FLOW_STATES.EVALUATING);
-      await evaluatePractice(audioBlob);
-    } else if (flowState === FLOW_STATES.CONVERSATION_LISTENING) {
-      // Stop conversation recording and get tutor reply
-      const transcript = spokenText;
-      stopRecording();
-      setFlowState(FLOW_STATES.CONVERSATION);
-      await handleConversationTurn(transcript);
-    } else if (flowState === FLOW_STATES.CONVERSATION) {
-      // Child wants to speak during conversation - start listening
-      stopAudio();
-      setFlowState(FLOW_STATES.CONVERSATION_LISTENING);
-      setSpokenText('');
-      await startRecording();
-    } else if (
-      flowState === FLOW_STATES.TUTOR_FEEDBACK ||
-      flowState === FLOW_STATES.TUTOR_PRACTICE ||
-      flowState === FLOW_STATES.COMPLETE
+    if (
+      flowState === FLOW_STATES.IDLE ||
+      flowState === FLOW_STATES.FEEDBACK
     ) {
-      // Child interrupts tutor - stop audio, start recording
-      stopAudio();
-      setFlowState(FLOW_STATES.CHILD_PRACTICING);
-      setSpokenText('');
-      await startRecording();
-    }
-  };
+      // Start reading (or retry)
+      try {
+        setFlowState(FLOW_STATES.CONNECTING);
+        stopPlayback();
+        setTutorMessages([]);
+        setIncorrectWords([]);
+        setShouldRetry(false);
+        functionCallArgsRef.current = '';
 
-  // ===== Conversation turn handler =====
-  const handleConversationTurn = async (childText) => {
-    try {
-      conversationHistoryRef.current.push({ role: 'child', text: childText });
-      conversationTurnRef.current += 1;
+        // Connect (or reuse connection) to Realtime API
+        await connectRealtime();
 
-      const res = await fetch('/api/voice/tutor-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          childText,
-          conversationHistory: conversationHistoryRef.current,
-          pageText: page.text,
-          nativeLanguage: language,
-        }),
-      });
-      const data = await res.json();
-      const reply = data.reply || 'Great job! Let\'s move to the next page!';
+        // Configure session with current page text
+        configureSession(page.text);
 
-      conversationHistoryRef.current.push({ role: 'tutor', text: reply });
-      addTutorMessage(reply);
-      await playTTS(reply);
+        // Brief delay to ensure session update is processed
+        await new Promise((r) => setTimeout(r, 300));
 
-      // After 2-3 turns, move to practice or complete
-      if (conversationTurnRef.current >= 2) {
-        if (practicePhrase) {
-          setFlowState(FLOW_STATES.TUTOR_PRACTICE);
-          const practiceMsg = `Now try saying: "${practicePhrase}" - ${practiceExplanation || ''}`;
-          addTutorMessage(practiceMsg);
-          await playTTS(practiceMsg);
-        } else {
-          setFlowState(FLOW_STATES.COMPLETE);
-        }
-      } else {
-        // Still in conversation - wait for child to press mic
-        setFlowState(FLOW_STATES.CONVERSATION);
-      }
-    } catch (err) {
-      console.error('Conversation error:', err);
-      setFlowState(FLOW_STATES.COMPLETE);
-      addTutorMessage('Great talking! Let\'s move to the next page!');
-    }
-  };
-
-  // ===== Analyze reading =====
-  const analyzeReading = async (audioBlob) => {
-    try {
-      if (!audioBlob) {
+        // Start capturing mic audio
+        await startMicCapture();
+        setFlowState(FLOW_STATES.READING);
+      } catch (err) {
+        console.error('Failed to start reading:', err);
         setFlowState(FLOW_STATES.IDLE);
-        addTutorMessage('I didn\'t hear anything. Press the mic and try reading again!');
-        return;
+        addTutorMessage('Something went wrong. Please try again!');
       }
+    } else if (flowState === FLOW_STATES.READING) {
+      // Child is done reading — stop mic, commit audio, request response
+      stopMicCapture();
+      setFlowState(FLOW_STATES.PROCESSING);
 
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      formData.append('originalText', page.text);
-      formData.append('nativeLanguage', language);
-
-      const res = await fetch('/api/voice/analyze-reading', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-
-      setWordResults(data.wordResults || null);
-
-      // Save practice info for later (after conversation)
-      if (data.practicePhrase) {
-        setPracticePhrase(data.practicePhrase);
-        setPracticeExplanation(data.practiceExplanation);
-      }
-
-      // Step 1: Tutor reads sentence back and explains in native language
-      if (data.feedback) {
-        setFlowState(FLOW_STATES.TUTOR_FEEDBACK);
-        addTutorMessage(data.feedback);
-        await playTTS(data.feedback);
-      }
-
-      // Step 2: Ask follow-up question to start conversation
-      if (data.followUpQuestion) {
-        addTutorMessage(data.followUpQuestion);
-        await playTTS(data.followUpQuestion);
-        // Initialize conversation history
-        conversationHistoryRef.current = [
-          { role: 'tutor', text: data.feedback },
-          { role: 'tutor', text: data.followUpQuestion },
-        ];
-        conversationTurnRef.current = 0;
-        setFlowState(FLOW_STATES.CONVERSATION);
-      } else if (data.practicePhrase) {
-        // No follow-up question, go straight to practice
-        setFlowState(FLOW_STATES.TUTOR_PRACTICE);
-        const practiceMsg = `Now try saying: "${data.practicePhrase}" - ${data.practiceExplanation || ''}`;
-        addTutorMessage(practiceMsg);
-        await playTTS(practiceMsg);
-      } else {
-        setFlowState(FLOW_STATES.COMPLETE);
-        const doneMsg = isLastPage
-          ? 'Amazing! You finished the whole story! Great reading!'
-          : 'Great reading! Move to the next page when you are ready!';
-        addTutorMessage(doneMsg);
-        await playTTS(doneMsg);
-      }
-    } catch (err) {
-      console.error('Analyze error:', err);
-      setFlowState(FLOW_STATES.IDLE);
-      addTutorMessage('Oops, something went wrong. Try reading again!');
-    }
-  };
-
-  // ===== Evaluate practice =====
-  const evaluatePractice = async (audioBlob) => {
-    try {
-      if (!audioBlob) {
-        setFlowState(FLOW_STATES.TUTOR_PRACTICE);
-        addTutorMessage('I didn\'t hear anything. Press the mic and try again!');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-      formData.append('practicePhrase', practicePhrase);
-      formData.append('nativeLanguage', language);
-
-      const res = await fetch('/api/voice/evaluate-practice', {
-        method: 'POST',
-        body: formData,
-      });
-      const data = await res.json();
-
-      setFlowState(FLOW_STATES.COMPLETE);
-      const msg = data.message || 'Good job! Move to the next page!';
-      addTutorMessage(msg);
-      await playTTS(msg);
-    } catch (err) {
-      console.error('Evaluate error:', err);
-      setFlowState(FLOW_STATES.COMPLETE);
-      addTutorMessage('Good try! Move to the next page when ready!');
+      sendEvent({ type: 'input_audio_buffer.commit' });
+      sendEvent({ type: 'response.create' });
     }
   };
 
   // ===== Navigation =====
   const handleNextPage = () => {
     if (!isLastPage) {
+      disconnectRealtime();
       setCurrentPage((prev) => prev + 1);
     }
   };
 
   const handlePrevPage = () => {
     if (!isFirstPage) {
+      disconnectRealtime();
       setCurrentPage((prev) => prev - 1);
     }
   };
 
   // ===== Mic button state =====
-  const isMicActive =
-    flowState === FLOW_STATES.READING ||
-    flowState === FLOW_STATES.CHILD_PRACTICING ||
-    flowState === FLOW_STATES.CONVERSATION_LISTENING;
+  const isMicActive = flowState === FLOW_STATES.READING;
 
   const getMicLabel = () => {
-    if (isMicActive) return 'Stop';
-    if (flowState === FLOW_STATES.IDLE) return 'Read';
-    if (flowState === FLOW_STATES.ANALYZING || flowState === FLOW_STATES.EVALUATING) return '...';
-    if (flowState === FLOW_STATES.CONVERSATION) return 'Talk';
-    if (flowState === FLOW_STATES.TUTOR_PRACTICE) return 'Speak';
-    return 'Speak';
+    if (flowState === FLOW_STATES.READING) return 'Done';
+    if (
+      flowState === FLOW_STATES.CONNECTING ||
+      flowState === FLOW_STATES.PROCESSING
+    )
+      return '...';
+    if (flowState === FLOW_STATES.FEEDBACK && shouldRetry) return 'Try Again';
+    return 'Read';
   };
 
   const isMicDisabled =
-    flowState === FLOW_STATES.ANALYZING || flowState === FLOW_STATES.EVALUATING;
+    flowState === FLOW_STATES.CONNECTING ||
+    flowState === FLOW_STATES.PROCESSING;
 
-  // Filter messages to only show tutor messages in transcript
-  const visibleMessages = tutorMessages.filter((msg) => msg.type === 'tutor');
+  // ===== Render sentence with incorrect word highlighting =====
+  const renderSentence = () => {
+    const words = page.text.split(/\s+/);
+    return (
+      <div className="sentence-container">
+        <div className="sentence-text">
+          {words.map((word, index) => {
+            const cleanWord = word.replace(/[^a-zA-Z']/g, '').toLowerCase();
+            const isIncorrect = incorrectWords.includes(cleanWord);
+            return (
+              <span
+                key={index}
+                className={`sentence-word ${isIncorrect ? 'word-highlight' : ''}`}
+              >
+                {word}{' '}
+              </span>
+            );
+          })}
+        </div>
+        {flowState === FLOW_STATES.READING && (
+          <p className="reading-hint">Reading... press Done when finished</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="story-viewer">
@@ -506,12 +569,7 @@ function StoryViewer({ story, language, onBack }) {
               </div>
             ) : null}
 
-            <KaraokeText
-              text={page.text}
-              isReading={flowState === FLOW_STATES.READING}
-              spokenText={spokenText}
-              wordResults={wordResults}
-            />
+            {renderSentence()}
           </div>
 
           <div className="page-navigation">
@@ -540,12 +598,12 @@ function StoryViewer({ story, language, onBack }) {
           />
 
           <div className="tutor-messages">
-            {visibleMessages.length === 0 && (
+            {tutorMessages.length === 0 && (
               <div className="tutor-hint">
                 Press the microphone to start reading!
               </div>
             )}
-            {visibleMessages.map((msg, i) => (
+            {tutorMessages.map((msg, i) => (
               <div key={i} className="tutor-message panda-message">
                 <span className="message-label">Panda</span>
                 <p>{msg.text}</p>
@@ -560,7 +618,11 @@ function StoryViewer({ story, language, onBack }) {
               onClick={handleMicPress}
               disabled={isMicDisabled}
             >
-              <svg viewBox="0 0 24 24" className="mic-icon" fill="currentColor">
+              <svg
+                viewBox="0 0 24 24"
+                className="mic-icon"
+                fill="currentColor"
+              >
                 {isMicActive ? (
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 ) : (
@@ -575,8 +637,8 @@ function StoryViewer({ story, language, onBack }) {
             {isMicActive && (
               <div className="recording-indicator">Listening...</div>
             )}
-            {flowState === FLOW_STATES.CONVERSATION && !isTutorSpeaking && (
-              <div className="conversation-hint">Press mic to answer!</div>
+            {flowState === FLOW_STATES.PROCESSING && (
+              <div className="processing-indicator">Thinking...</div>
             )}
           </div>
         </div>

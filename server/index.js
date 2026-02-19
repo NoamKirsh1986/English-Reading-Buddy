@@ -10,10 +10,12 @@ if (process.env.HTTPS_PROXY || process.env.https_proxy) {
   global.__proxyFetch = (url, init) => nodeFetch(url, { ...init, agent });
 }
 
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const storyRoutes = require('./routes/story');
 const voiceRoutes = require('./routes/voice');
+const { setupRealtimeProxy } = require('./routes/realtime');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,6 +30,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+setupRealtimeProxy(server);
+
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
