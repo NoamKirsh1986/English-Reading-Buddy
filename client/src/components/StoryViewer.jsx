@@ -358,7 +358,7 @@ Keep your spoken response concise and warm (3-5 sentences). Mix English and ${la
       audioContextRef.current = audioContext;
 
       const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessorNode(4096, 1, 1);
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
