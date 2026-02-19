@@ -116,19 +116,49 @@ function StoryViewer({ story, language, onBack }) {
         return;
       }
 
+      // Close stale connection if any
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(`${protocol}//${window.location.host}/ws/realtime`);
+      const wsUrl = `${protocol}//${window.location.host}/ws/realtime`;
+      console.log('Connecting to Realtime API via', wsUrl);
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      let resolved = false;
+
+      // Timeout if session.created never arrives
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          console.error('Realtime API connection timed out');
+          ws.close();
+          wsRef.current = null;
+          reject(new Error('Connection timed out'));
+        }
+      }, 15000);
 
       ws.onopen = () => {
-        console.log('WebSocket connected to server');
+        console.log('WebSocket connected to server proxy');
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (e) {
+          console.error('Failed to parse WS message:', event.data);
+          return;
+        }
+
+        console.log('Realtime event:', data.type);
 
         // Resolve the promise when session is created
-        if (data.type === 'session.created') {
+        if (data.type === 'session.created' && !resolved) {
+          resolved = true;
+          clearTimeout(timeout);
           resolve();
         }
 
@@ -138,12 +168,22 @@ function StoryViewer({ story, language, onBack }) {
 
       ws.onerror = (err) => {
         console.error('WebSocket error:', err);
-        reject(err);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          wsRef.current = null;
+          reject(new Error('WebSocket connection failed'));
+        }
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected, code:', event.code, 'reason:', event.reason);
         wsRef.current = null;
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          reject(new Error('WebSocket closed before session created'));
+        }
       };
     });
   };
@@ -469,7 +509,7 @@ Keep your spoken response concise and warm (3-5 sentences). Mix English and ${la
       } catch (err) {
         console.error('Failed to start reading:', err);
         setFlowState(FLOW_STATES.IDLE);
-        addTutorMessage('Something went wrong. Please try again!');
+        addTutorMessage(`Could not connect to the tutor: ${err.message}. Please restart the server and try again.`);
       }
     } else if (flowState === FLOW_STATES.READING) {
       // Child is done reading — stop mic, commit audio, request response

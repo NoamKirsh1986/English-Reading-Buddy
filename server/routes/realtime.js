@@ -4,17 +4,23 @@ function setupRealtimeProxy(server) {
   const wss = new WebSocket.Server({ noServer: true });
 
   server.on('upgrade', (request, socket, head) => {
+    console.log('[Realtime] WebSocket upgrade request for:', request.url);
     if (request.url === '/ws/realtime') {
       wss.handleUpgrade(request, socket, head, (ws) => {
         handleConnection(ws);
       });
     } else {
+      console.log('[Realtime] Rejecting upgrade for unknown path:', request.url);
       socket.destroy();
     }
   });
+
+  console.log('[Realtime] WebSocket proxy initialized, listening for /ws/realtime upgrades');
 }
 
 function handleConnection(clientWs) {
+  console.log('[Realtime] Client connected, opening connection to OpenAI...');
+
   const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
 
   const wsOptions = {
@@ -27,20 +33,31 @@ function handleConnection(clientWs) {
   // Use proxy agent if available (containerized environments)
   if (global.__proxyAgent) {
     wsOptions.agent = global.__proxyAgent;
+    console.log('[Realtime] Using HTTPS proxy agent for OpenAI connection');
   }
 
-  const openaiWs = new WebSocket(url, wsOptions);
+  let openaiWs;
+  try {
+    openaiWs = new WebSocket(url, wsOptions);
+  } catch (err) {
+    console.error('[Realtime] Failed to create OpenAI WebSocket:', err.message);
+    clientWs.close();
+    return;
+  }
 
   let openaiReady = false;
   const messageQueue = [];
 
   openaiWs.on('open', () => {
-    console.log('Connected to OpenAI Realtime API');
+    console.log('[Realtime] Connected to OpenAI Realtime API');
     openaiReady = true;
-    for (const msg of messageQueue) {
-      openaiWs.send(msg);
+    if (messageQueue.length > 0) {
+      console.log(`[Realtime] Flushing ${messageQueue.length} queued messages`);
+      for (const msg of messageQueue) {
+        openaiWs.send(msg);
+      }
+      messageQueue.length = 0;
     }
-    messageQueue.length = 0;
   });
 
   openaiWs.on('message', (data) => {
@@ -50,17 +67,39 @@ function handleConnection(clientWs) {
   });
 
   openaiWs.on('error', (err) => {
-    console.error('OpenAI WS error:', err.message);
+    console.error('[Realtime] OpenAI WS error:', err.message);
+    if (err.code) console.error('[Realtime] Error code:', err.code);
     if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify({
+        type: 'error',
+        error: { message: `OpenAI connection error: ${err.message}`, code: err.code || 'unknown' },
+      }));
       clientWs.close();
     }
   });
 
   openaiWs.on('close', (code, reason) => {
-    console.log('OpenAI WS closed:', code, reason?.toString());
+    const reasonStr = reason?.toString() || '';
+    console.log(`[Realtime] OpenAI WS closed: code=${code} reason="${reasonStr}"`);
     if (clientWs.readyState === WebSocket.OPEN) {
       clientWs.close();
     }
+  });
+
+  openaiWs.on('unexpected-response', (req, res) => {
+    let body = '';
+    res.on('data', (chunk) => { body += chunk; });
+    res.on('end', () => {
+      console.error(`[Realtime] OpenAI unexpected response: ${res.statusCode} ${res.statusMessage}`);
+      console.error('[Realtime] Response body:', body);
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({
+          type: 'error',
+          error: { message: `OpenAI returned ${res.statusCode}: ${body}`, code: 'unexpected_response' },
+        }));
+        clientWs.close();
+      }
+    });
   });
 
   clientWs.on('message', (data) => {
@@ -73,14 +112,14 @@ function handleConnection(clientWs) {
   });
 
   clientWs.on('close', () => {
-    console.log('Client disconnected from realtime');
-    if (openaiWs.readyState === WebSocket.OPEN) {
+    console.log('[Realtime] Client disconnected');
+    if (openaiWs.readyState === WebSocket.OPEN || openaiWs.readyState === WebSocket.CONNECTING) {
       openaiWs.close();
     }
   });
 
   clientWs.on('error', (err) => {
-    console.error('Client WS error:', err.message);
+    console.error('[Realtime] Client WS error:', err.message);
     if (openaiWs.readyState === WebSocket.OPEN) {
       openaiWs.close();
     }
