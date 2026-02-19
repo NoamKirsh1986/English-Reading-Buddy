@@ -206,6 +206,7 @@ function StoryViewer({ story, language, onBack }) {
     sendEvent({
       type: 'session.update',
       session: {
+        modalities: ['text', 'audio'],
         instructions: `You are "Panda Buddy", a warm, friendly, and encouraging English reading tutor for children who speak ${language}.
 
 The child is going to read this sentence aloud: "${pageText}"
@@ -246,11 +247,13 @@ Keep your spoken response concise and warm (3-5 sentences). Mix English and ${la
           },
         ],
         tool_choice: 'auto',
-        voice: 'nova',
+        voice: 'alloy',
+        input_audio_format: 'pcm16',
+        output_audio_format: 'pcm16',
         input_audio_transcription: {
           model: 'whisper-1',
         },
-        turn_detection: null, // Manual — we decide when to trigger response
+        turn_detection: null,
       },
     });
   };
@@ -320,25 +323,35 @@ Keep your spoken response concise and warm (3-5 sentences). Mix English and ${la
         break;
 
       case 'response.done': {
-        // Check if this response contained audio (the feedback response, not the function call response)
-        const hasAudio = event.response?.output?.some(
-          (item) => item.type === 'message'
-        );
+        const outputs = event.response?.output || [];
+        const hasAudio = outputs.some((item) => item.type === 'message');
+        const hasFunctionCall = outputs.some((item) => item.type === 'function_call');
+
+        // If it has audio (with or without function call), transition to FEEDBACK
         if (hasAudio) {
           setFlowState(FLOW_STATES.FEEDBACK);
-          // Give audio queue time to finish playing
           setTimeout(() => {
             setIsTutorSpeaking(false);
           }, 1500);
+        }
+        // If it ONLY has a function call (no audio yet), the output_item.done handler
+        // already triggered the next response — just wait for audio
+        if (!hasAudio && !hasFunctionCall && event.response?.status === 'completed') {
+          // Empty response — transition to feedback anyway
+          setFlowState(FLOW_STATES.FEEDBACK);
+          setIsTutorSpeaking(false);
         }
         break;
       }
 
       case 'error':
-        console.error('Realtime API error:', event.error);
-        setFlowState(FLOW_STATES.IDLE);
-        addTutorMessage('Oops, something went wrong. Try reading again!');
-        stopMicCapture();
+        console.error('Realtime API error:', JSON.stringify(event.error, null, 2));
+        // Only reset to IDLE for fatal errors, not transient ones
+        if (event.error?.code === 'session_expired' || event.error?.code === 'invalid_api_key') {
+          setFlowState(FLOW_STATES.IDLE);
+          addTutorMessage('Connection lost. Please try again!');
+          stopMicCapture();
+        }
         break;
 
       default:
