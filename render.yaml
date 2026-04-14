@@ -1,0 +1,18 @@
+# Render Blueprint for English Reading Buddy.
+# Sign in to render.com with GitHub, choose New -> Blueprint, point at this repo,
+# and Render will read this file. You will be prompted for OPENAI_API_KEY.
+services:
+  - type: web
+    name: english-reading-buddy
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false

@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const OpenAI = require('openai');
-const { scorePronunciation, parseWordResults, buildScoreSummary } = require('../services/speechace');
 
 const openaiOptions = {
   apiKey: process.env.OPENAI_API_KEY,
@@ -11,12 +9,6 @@ if (global.__proxyFetch) {
   openaiOptions.fetch = global.__proxyFetch;
 }
 const openai = new OpenAI(openaiOptions);
-
-// Multer stores uploaded audio in memory as a Buffer
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
-});
 
 // Get teacher feedback on reading
 router.post('/feedback', async (req, res) => {
@@ -84,122 +76,6 @@ Keep explanations very short and child-friendly (3-4 lines max).`,
   } catch (error) {
     console.error('Explanation error:', error);
     res.status(500).json({ error: 'Failed to explain word' });
-  }
-});
-
-// Analyze reading accuracy using SpeechAce (audio) + GPT-4o (feedback)
-router.post('/analyze-reading', upload.single('audio'), async (req, res) => {
-  try {
-    const { originalText, nativeLanguage } = req.body;
-    const audioBuffer = req.file?.buffer;
-
-    if (!audioBuffer) {
-      return res.status(400).json({ error: 'No audio file provided' });
-    }
-
-    // Step 1: Score pronunciation with SpeechAce
-    const speechAceData = await scorePronunciation(audioBuffer, originalText);
-    const wordResults = parseWordResults(speechAceData, originalText);
-    const scoreSummary = buildScoreSummary(wordResults, speechAceData);
-
-    console.log(`Analyze: overall=${scoreSummary.overallScore}, correct=${scoreSummary.correctCount}/${scoreSummary.totalWords}, incorrect=[${scoreSummary.incorrectWords.map(w => `${w.word}:${w.score}`).join(', ')}]`);
-
-    // Step 2: Generate child-friendly feedback with GPT-4o using the scores
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a friendly English reading tutor for children who speak ${nativeLanguage}.
-You have pronunciation assessment scores for each word the child read.
-
-Return a JSON object with:
-1. "feedback": Your response should do three things in order:
-   a. First, read the sentence back to the child naturally in English.
-   b. Then explain what it means in ${nativeLanguage}.
-   c. If they struggled with specific words (scored below 60), mention those gently.
-   Keep this to 2-4 sentences, mixing English and ${nativeLanguage}.
-2. "followUpQuestion": A simple, fun follow-up question connected to the content of the sentence. For example, if the sentence is about a bird, ask "Do you like birds? What is your favorite animal?". Ask in English with a ${nativeLanguage} translation. This should invite the child to speak.
-3. "practiceWord": The word with the lowest pronunciation score (pick from words scoring below 60). If all words scored 60+, set to null.
-4. "practicePhrase": A short, simple phrase (3-6 words) using the practiceWord in a new context. If no practice needed, set to null.
-5. "practiceExplanation": Brief explanation of the practice phrase in ${nativeLanguage}. If no practice needed, set to null.
-
-Return ONLY valid JSON, no markdown fences.`,
-        },
-        {
-          role: 'user',
-          content: `Original text: "${originalText}"
-Pronunciation scores per word: ${scoreSummary.wordDetails}
-Overall score: ${scoreSummary.overallScore}/100
-Words needing practice (scored below 60): ${scoreSummary.incorrectWords.map((w) => `"${w.word}" (${w.score})`).join(', ') || 'none'}`,
-        },
-      ],
-      max_tokens: 600,
-      temperature: 0.3,
-    });
-
-    const content = response.choices[0].message.content.trim();
-    const jsonStr = content.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
-    const gptResult = JSON.parse(jsonStr);
-
-    res.json({
-      wordResults,
-      feedback: gptResult.feedback,
-      followUpQuestion: gptResult.followUpQuestion || null,
-      practiceWord: gptResult.practiceWord,
-      practicePhrase: gptResult.practicePhrase,
-      practiceExplanation: gptResult.practiceExplanation,
-    });
-  } catch (error) {
-    console.error('Analyze reading error:', error);
-    res.status(500).json({ error: 'Failed to analyze reading' });
-  }
-});
-
-// Evaluate child's practice attempt using SpeechAce (audio) + GPT-4o (feedback)
-router.post('/evaluate-practice', upload.single('audio'), async (req, res) => {
-  try {
-    const { practicePhrase, nativeLanguage } = req.body;
-    const audioBuffer = req.file?.buffer;
-
-    if (!audioBuffer) {
-      return res.status(400).json({ error: 'No audio file provided' });
-    }
-
-    // Step 1: Score pronunciation with SpeechAce
-    const speechAceData = await scorePronunciation(audioBuffer, practicePhrase);
-    const overallScore = speechAceData.text_score?.quality_score ?? 0;
-
-    // Step 2: Generate feedback with GPT-4o
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a friendly English tutor for children who speak ${nativeLanguage}.
-The child was asked to say a practice phrase. You have their pronunciation score.
-Return a JSON object with:
-1. "success": true if the overall score is 50 or above, false otherwise
-2. "message": A short encouraging response (1-2 sentences) in simple English and ${nativeLanguage}. If they did well, praise them and tell them to go to the next page. If not, gently encourage them to try again.
-
-Return ONLY valid JSON, no markdown fences.`,
-        },
-        {
-          role: 'user',
-          content: `Practice phrase: "${practicePhrase}"\nPronunciation score: ${overallScore}/100`,
-        },
-      ],
-      max_tokens: 200,
-      temperature: 0.3,
-    });
-
-    const content = response.choices[0].message.content.trim();
-    const jsonStr = content.replace(/^```json?\s*/, '').replace(/\s*```$/, '');
-    const result = JSON.parse(jsonStr);
-    res.json(result);
-  } catch (error) {
-    console.error('Evaluate practice error:', error);
-    res.status(500).json({ error: 'Failed to evaluate practice' });
   }
 });
 

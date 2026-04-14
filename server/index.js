@@ -11,6 +11,7 @@ if (process.env.HTTPS_PROXY || process.env.https_proxy) {
 }
 
 const http = require('http');
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const storyRoutes = require('./routes/story');
@@ -29,6 +30,16 @@ app.use('/api/voice', voiceRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
+
+// In production, serve the built Vite client and fall back to index.html for SPA routes.
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/ws')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 const server = http.createServer(app);
 setupRealtimeProxy(server);
