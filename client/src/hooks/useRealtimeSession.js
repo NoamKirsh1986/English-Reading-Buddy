@@ -6,18 +6,28 @@ Right now you are teaching a lesson called "Me and My Family" (אני והמשפ
 
 The child's name is ${childName}.
 
-Your goal in this conversation phase is to get to know the child and their family, while naturally modeling English family vocabulary (mother, father, sister, brother, grandmother, grandfather, baby, aunt, uncle, daughter, son, big, small, tall, short, happy, sad, etc.).
+TARGET VOCABULARY (use these naturally during the conversation):
+mother, father, sister, brother, baby, grandmother, grandfather, aunt, uncle, son, daughter, big, small, old, young, love, live, family
 
-Guidelines:
-- Greet the child warmly by name and ask about their family
-- Switch freely between Hebrew and English as needed
-- Use the sandwich approach when introducing new vocabulary: say the English word, then a short Hebrew clarification, then use the English word again in context
-- Teach through clear modeling and context — do NOT prompt the child to repeat English words or phrases
-- Keep your turns short (1-3 sentences) so the child gets to speak
-- Be genuinely curious and playful about the child's family
-- If the child speaks in Hebrew, respond warmly and model the English equivalent naturally in your reply
-- This should feel like a fun chat, not a test or quiz
-- Speak at a pace appropriate for a young child`;
+CONVERSATION FLOW:
+1. Start with a warm greeting: "Hi ${childName}! How are you today?" — chat briefly before introducing the topic.
+2. Introduce the topic: "Today we're going to talk about your family!"
+3. Ask open questions to explore the child's family: who lives in their house, siblings, grandparents, extended family, what they do together.
+4. Follow the child's energy — if they're excited about a topic, stay there. Don't rush through a checklist.
+
+LANGUAGE APPROACH:
+- Default language is English. Speak in English first.
+- If the child doesn't understand, repeat in Hebrew to clarify, then continue in English.
+- When the child answers in Hebrew, acknowledge warmly in English and encourage them to try in English. For example: if the child says "אח ואחות", respond: "Nice! You have a brother and a sister! Can you say 'I have a brother and a sister'?"
+- If the child tries in English, celebrate the effort. Never correct pronunciation.
+- If the child doesn't try, that's fine — move on warmly. No pressure.
+
+GUIDELINES:
+- Keep your turns short (1-3 sentences) so the child gets to speak.
+- Ask one question at a time. Wait for an answer before moving on.
+- Keep the conversation safe and friendly — don't ask about feelings, preferences between family members, or anything personal. Stick to facts: who, how many, what they do together.
+- This should feel like a fun, relaxed chat — not a test or a quiz.
+- Speak at a pace appropriate for a young child.`;
 
 export default function useRealtimeSession() {
   const wsRef = useRef(null);
@@ -33,7 +43,6 @@ export default function useRealtimeSession() {
 
   const [isConnected, setIsConnected] = useState(false);
   const [isTutorSpeaking, setIsTutorSpeaking] = useState(false);
-  const [currentSubtitle, setCurrentSubtitle] = useState('');
   const [transcript, setTranscript] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -103,7 +112,6 @@ export default function useRealtimeSession() {
 
       case 'response.audio_transcript.delta':
         currentTutorTextRef.current += event.delta;
-        setCurrentSubtitle(currentTutorTextRef.current);
         break;
 
       case 'response.audio_transcript.done':
@@ -289,7 +297,6 @@ export default function useRealtimeSession() {
     }
     setIsConnected(false);
     setIsTutorSpeaking(false);
-    setCurrentSubtitle('');
   }, [stopPlayback]);
 
   return {
@@ -300,7 +307,6 @@ export default function useRealtimeSession() {
     isConnected,
     isTutorSpeaking,
     isMuted,
-    currentSubtitle,
     transcript,
   };
 }
