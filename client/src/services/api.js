@@ -1,29 +1,29 @@
 const API_BASE = '/api';
 
-export async function generateStory() {
-  const response = await fetch(`${API_BASE}/story/generate`, {
+export async function extractWords(transcript) {
+  const response = await fetch(`${API_BASE}/lesson/extract-words`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transcript }),
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to generate story');
+    throw new Error('Failed to extract words');
   }
 
   return response.json();
 }
 
-export async function textToSpeech(text) {
-  const response = await fetch(`${API_BASE}/voice/tts`, {
+export async function generateImage(word) {
+  const response = await fetch(`${API_BASE}/lesson/generate-image`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ word }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to generate speech');
+    throw new Error('Failed to generate image');
   }
 
-  return response.blob();
+  return response.json();
 }

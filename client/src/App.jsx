@@ -1,80 +1,93 @@
-import { useState } from 'react';
-import LanguageSelector from './components/LanguageSelector';
-import StoryViewer from './components/StoryViewer';
-import { generateStory } from './services/api';
+import { useState, useCallback } from 'react';
+import OnboardingScreen from './components/OnboardingScreen';
+import LessonScreen from './components/LessonScreen';
 
-function App() {
-  const [language, setLanguage] = useState('Hebrew');
-  const [story, setStory] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+const PHASES = {
+  ONBOARDING: 'onboarding',
+  CONVERSATION: 'conversation',
+  EXTRACTING: 'extracting',
+  QUIZ: 'quiz',
+  SUMMARY: 'summary',
+};
 
-  const handleGenerateStory = async () => {
-    setLoading(true);
-    setError(null);
+export default function App() {
+  const [phase, setPhase] = useState(PHASES.ONBOARDING);
+  const [childName, setChildName] = useState('');
+  const [extractedWords, setExtractedWords] = useState(null);
+
+  const handleStart = useCallback((name) => {
+    setChildName(name);
+    setPhase(PHASES.CONVERSATION);
+  }, []);
+
+  const handleConversationEnd = useCallback(async (transcript) => {
+    setPhase(PHASES.EXTRACTING);
+
     try {
-      const data = await generateStory();
-      setStory(data);
+      const res = await fetch('/api/lesson/extract-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript }),
+      });
+      const data = await res.json();
+      setExtractedWords(data.words);
+      setPhase(PHASES.QUIZ);
     } catch (err) {
-      setError(err.message || 'Failed to generate story');
-    } finally {
-      setLoading(false);
+      console.error('Word extraction failed:', err);
+      setExtractedWords([
+        { word: 'father', contrast: 'mother' },
+        { word: 'brother', contrast: 'sister' },
+        { word: 'grandmother', contrast: 'grandfather' },
+        { word: 'daughter', contrast: 'son' },
+        { word: 'aunt', contrast: 'uncle' },
+      ]);
+      setPhase(PHASES.QUIZ);
     }
-  };
+  }, []);
 
-  const handleBackToHome = () => {
-    setStory(null);
-    setError(null);
-  };
+  const handleExit = useCallback(() => {
+    setPhase(PHASES.ONBOARDING);
+    setExtractedWords(null);
+  }, []);
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>English Reading Buddy</h1>
-        <p className="subtitle">Practice reading English with fun stories!</p>
-      </header>
+      {phase === PHASES.ONBOARDING && (
+        <OnboardingScreen onStart={handleStart} />
+      )}
 
-      {!story ? (
-        <main className="home-screen">
-          <div className="setup-card">
-            <LanguageSelector value={language} onChange={setLanguage} />
+      {phase === PHASES.CONVERSATION && (
+        <LessonScreen
+          childName={childName}
+          onConversationEnd={handleConversationEnd}
+          onExit={handleExit}
+        />
+      )}
 
-            <button
-              className="generate-btn"
-              onClick={handleGenerateStory}
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="loading-content">
-                  <span className="spinner"></span>
-                  Creating your story...
-                </span>
-              ) : (
-                'Generate Story'
-              )}
-            </button>
+      {phase === PHASES.EXTRACTING && (
+        <div className="transition-screen">
+          <div className="spinner" />
+          <h2>Getting your word game ready...</h2>
+          <p dir="rtl">...מכין את משחק המילים שלך</p>
+        </div>
+      )}
 
-            {error && <p className="error-message">{error}</p>}
-          </div>
-
-          {loading && (
-            <div className="loading-info">
-              <p>Writing a story and drawing pictures just for you...</p>
-              <p className="loading-sub">This may take a moment</p>
-            </div>
+      {phase === PHASES.QUIZ && (
+        <div className="transition-screen">
+          <h2>Word Game Coming Soon!</h2>
+          <p>Words to practice:</p>
+          {extractedWords && (
+            <ul className="word-list">
+              {extractedWords.map((w, i) => (
+                <li key={i}>
+                  <strong>{w.word}</strong> vs <strong>{w.contrast}</strong>
+                </li>
+              ))}
+            </ul>
           )}
-        </main>
-      ) : (
-        <main className="reading-screen">
-          <StoryViewer
-            story={story}
-            language={language}
-            onBack={handleBackToHome}
-          />
-        </main>
+          <button className="primary-btn" onClick={handleExit}>Back to Start</button>
+        </div>
       )}
     </div>
   );
 }
-
-export default App;
