@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import TopBar from './TopBar';
 import TutorTile from './TutorTile';
 import ChildTile from './ChildTile';
-import SubtitleBar from './SubtitleBar';
 import useRealtimeSession from '../hooks/useRealtimeSession';
 
 const CONVERSATION_SECONDS = 5 * 60;
@@ -16,7 +15,6 @@ export default function LessonScreen({ childName, onConversationEnd, onExit }) {
     isConnected,
     isTutorSpeaking,
     isMuted,
-    currentSubtitle,
     transcript,
   } = useRealtimeSession();
 
@@ -185,8 +183,6 @@ export default function LessonScreen({ childName, onConversationEnd, onExit }) {
           onToggleMute={toggleMute}
         />
       </div>
-
-      <SubtitleBar text={currentSubtitle} />
 
       {isWrappingUp && (
         <div className="wrapping-banner">Finishing up...</div>

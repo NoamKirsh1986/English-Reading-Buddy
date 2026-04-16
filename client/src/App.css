@@ -323,26 +323,6 @@ body {
   background: rgba(220, 50, 50, 0.6);
 }
 
-/* ===== Subtitle Bar ===== */
-.subtitle-bar {
-  flex-shrink: 0;
-  padding: 14px 40px;
-  text-align: center;
-  min-height: 56px;
-}
-
-.subtitle-text {
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: #444;
-  background: rgba(255, 255, 255, 0.85);
-  display: inline-block;
-  padding: 8px 24px;
-  border-radius: 16px;
-  box-shadow: 0 2px 12px rgba(100, 60, 180, 0.06);
-  max-width: 80%;
-}
-
 /* ===== Connecting Overlay ===== */
 .connecting-overlay {
   position: absolute;
