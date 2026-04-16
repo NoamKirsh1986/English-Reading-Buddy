@@ -8,7 +8,6 @@ export default function TutorTile({ isSpeaking }) {
   const talkingRef = useRef(null);
 
   useEffect(() => {
-    // Preload both videos
     [idleRef, talkingRef].forEach((ref) => {
       if (ref.current) {
         ref.current.play().catch(() => {});
@@ -35,11 +34,19 @@ export default function TutorTile({ isSpeaking }) {
         playsInline
         className={`tutor-video ${isSpeaking ? 'visible' : ''}`}
       />
-      {isSpeaking && (
-        <span className="speaking-indicator">
-          <span className="dot" /><span className="dot" /><span className="dot" />
-        </span>
-      )}
+      <span className={`status-badge ${isSpeaking ? 'speaking' : 'listening'}`}>
+        {isSpeaking ? (
+          <>
+            <span className="badge-dots"><span /><span /><span /></span>
+            מדברת
+          </>
+        ) : (
+          <>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" strokeWidth="2" /><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" strokeWidth="2" /></svg>
+            מקשיבה
+          </>
+        )}
+      </span>
     </div>
   );
 }

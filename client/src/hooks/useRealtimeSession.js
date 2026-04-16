@@ -17,10 +17,17 @@ CONVERSATION FLOW:
 
 LANGUAGE APPROACH:
 - Default language is English. Speak in English first.
-- If the child doesn't understand, repeat in Hebrew to clarify, then continue in English.
+- If the child doesn't understand, explain in Hebrew and then continue in English.
+- When introducing vocabulary, explain the meaning: "Brother, that means אח" or "Sister זה אחות". Don't just repeat the same sentence in two languages — actually teach the word.
 - When the child answers in Hebrew, acknowledge warmly in English and encourage them to try in English. For example: if the child says "אח ואחות", respond: "Nice! You have a brother and a sister! Can you say 'I have a brother and a sister'?"
 - If the child tries in English, celebrate the effort. Never correct pronunciation.
 - If the child doesn't try, that's fine — move on warmly. No pressure.
+
+BEING ATTENTIVE:
+- Listen carefully to what the child says and respond to the SPECIFIC content. If the child mentions a name, an activity, or something about their family, ask a follow-up about that specific thing.
+- Don't ask generic questions when the child just gave you something specific to work with. For example, if the child says "my sister is Noa", ask "How old is Noa?" or "What do you and Noa like to do together?" — don't change the subject.
+- Show genuine curiosity. React to what the child tells you before moving on.
+- Stay on a topic as long as the child is engaged before moving to the next.
 
 GUIDELINES:
 - Keep your turns short (1-3 sentences) so the child gets to speak.
@@ -46,6 +53,7 @@ export default function useRealtimeSession() {
   const [transcript, setTranscript] = useState([]);
   const [isMuted, setIsMuted] = useState(false);
 
+  const isTutorSpeakingRef = useRef(false);
   const speakingTimeoutRef = useRef(null);
 
   const playAudioChunk = useCallback((base64Audio) => {
@@ -99,16 +107,32 @@ export default function useRealtimeSession() {
   const handleEvent = useCallback((event) => {
     switch (event.type) {
       case 'response.audio.delta':
-        setIsTutorSpeaking(true);
+        if (!isTutorSpeakingRef.current) {
+          isTutorSpeakingRef.current = true;
+          setIsTutorSpeaking(true);
+        }
         if (speakingTimeoutRef.current) clearTimeout(speakingTimeoutRef.current);
         playAudioChunk(event.delta);
         break;
 
-      case 'response.audio.done':
-        speakingTimeoutRef.current = setTimeout(() => {
-          setIsTutorSpeaking(false);
-        }, 500);
+      case 'response.audio.done': {
+        // Audio data fully received, but playback is still going.
+        // Wait until the scheduled playback finishes before switching to idle.
+        const ctx = playbackContextRef.current;
+        if (ctx && ctx.state !== 'closed') {
+          const remaining = Math.max(0, nextPlayTimeRef.current - ctx.currentTime);
+          speakingTimeoutRef.current = setTimeout(() => {
+            isTutorSpeakingRef.current = false;
+            setIsTutorSpeaking(false);
+          }, remaining * 1000 + 300);
+        } else {
+          speakingTimeoutRef.current = setTimeout(() => {
+            isTutorSpeakingRef.current = false;
+            setIsTutorSpeaking(false);
+          }, 300);
+        }
         break;
+      }
 
       case 'response.audio_transcript.delta':
         currentTutorTextRef.current += event.delta;
