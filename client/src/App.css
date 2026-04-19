@@ -189,15 +189,52 @@ body {
   background: #e0d4f5;
 }
 
-/* ===== Video Call Layout ===== */
-.video-call-layout {
+/* ===== Lesson Body Layouts ===== */
+.lesson-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  padding: 24px;
+  gap: 24px;
+}
+
+.conversation-layout {
+  align-items: center;
+  justify-content: center;
+}
+
+.conversation-layout .tiles-container {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.quiz-layout {
+  align-items: stretch;
+}
+
+.quiz-layout .quiz-area {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  padding: 24px 40px;
-  min-height: 0;
+  min-width: 0;
+}
+
+.quiz-layout .tiles-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quiz-layout .tiles-sidebar .tile {
+  flex: none;
+  max-width: 280px;
+  aspect-ratio: 4 / 3;
 }
 
 /* ===== Tiles ===== */
@@ -489,17 +526,196 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ===== Quiz Content ===== */
+.quiz-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.quiz-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quiz-progress {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #8b6fcf;
+  background: white;
+  padding: 6px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(100, 60, 180, 0.08);
+}
+
+.quiz-images {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+}
+
+.quiz-image-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  border: 4px solid #e0d4f5;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  background: white;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s;
+}
+
+.quiz-image-btn:hover:not(:disabled) {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(100, 60, 180, 0.15);
+  border-color: #8b6fcf;
+}
+
+.quiz-image-btn:disabled {
+  cursor: default;
+}
+
+.quiz-image-btn.correct {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
+}
+
+.quiz-image-btn.wrong {
+  border-color: #f44336;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.3);
+}
+
+.quiz-image-btn.reveal-correct {
+  border-color: #4caf50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
+}
+
+.quiz-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.quiz-image-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.quiz-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #5b3ea8;
+  font-weight: 600;
+}
+
+.star-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  animation: starPop 0.5s ease-out;
+  filter: drop-shadow(0 4px 12px rgba(255, 193, 7, 0.5));
+}
+
+@keyframes starPop {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  60% { transform: translate(-50%, -50%) scale(1.3); }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* ===== Summary Screen ===== */
+.summary-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: linear-gradient(160deg, #f8f4ff 0%, #f0eaff 100%);
+  padding: 40px;
+}
+
+.summary-title {
+  font-size: 2rem;
+  color: #5b3ea8;
+  font-weight: 800;
+}
+
+.summary-stars {
+  display: flex;
+  gap: 12px;
+}
+
+.summary-star {
+  font-size: 3rem;
+  animation: starReveal 0.4s ease-out both;
+}
+
+.summary-star.filled {
+  filter: drop-shadow(0 2px 8px rgba(255, 193, 7, 0.5));
+}
+
+.summary-star.empty {
+  opacity: 0.3;
+}
+
+@keyframes starReveal {
+  0% { transform: scale(0) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.summary-score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #666;
+}
+
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
-  .video-call-layout {
+  .conversation-layout {
     flex-direction: column;
     padding: 16px;
     gap: 12px;
   }
 
+  .conversation-layout .tiles-container {
+    flex-direction: column;
+  }
+
   .tile {
     max-width: 100%;
     aspect-ratio: 16 / 9;
+  }
+
+  .quiz-layout {
+    flex-direction: column;
+  }
+
+  .quiz-layout .tiles-sidebar {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .quiz-layout .tiles-sidebar .tile {
+    max-width: 50%;
+  }
+
+  .quiz-images {
+    flex-direction: column;
   }
 
   .top-bar {
@@ -508,15 +724,6 @@ body {
 
   .top-bar-title {
     font-size: 0.85rem;
-  }
-
-  .subtitle-bar {
-    padding: 10px 16px;
-  }
-
-  .subtitle-text {
-    max-width: 95%;
-    font-size: 0.95rem;
   }
 
   .onboarding-card {

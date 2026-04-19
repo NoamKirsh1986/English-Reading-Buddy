@@ -313,6 +313,30 @@ export default function useRealtimeSession() {
     }));
   }, []);
 
+  const updateInstructions = useCallback((newInstructions) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      type: 'session.update',
+      session: { instructions: newInstructions },
+    }));
+  }, []);
+
+  const sendSystemMessage = useCallback((text) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    wsRef.current.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text }],
+      },
+    }));
+    wsRef.current.send(JSON.stringify({
+      type: 'response.create',
+      response: { modalities: ['text', 'audio'] },
+    }));
+  }, []);
+
   const toggleMute = useCallback(() => {
     isMutedRef.current = !isMutedRef.current;
     setIsMuted(isMutedRef.current);
@@ -344,6 +368,8 @@ export default function useRealtimeSession() {
     connect,
     disconnect,
     sendWrapUp,
+    updateInstructions,
+    sendSystemMessage,
     toggleMute,
     isConnected,
     isTutorSpeaking,
